@@ -10,9 +10,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 public class UBWWorkRecordsImporter implements WorkRecordsImporter {
 
-    private static final int SHEET_INDEX = 6;
+    private int sheetIndex = -1;
+
+    private static final String SHEET_NAME = "Aufwände gesamt";
 
     private static final int COLUMN_INVOICEABLE = 11;
 
@@ -40,7 +44,7 @@ public class UBWWorkRecordsImporter implements WorkRecordsImporter {
             if (!checkValidity(workbook)) {
                 throw new InvalidFileFormatException("Invalid file", file.getFilename());
             }
-            Sheet sheet = workbook.getSheetAt(SHEET_INDEX);
+            Sheet sheet = workbook.getSheetAt(sheetIndex);
             int i = 3;
             Row row = sheet.getRow(i);
             while (row != null && row.getCell(0) != null && row.getCell(0).getStringCellValue() != null) {
@@ -59,6 +63,10 @@ public class UBWWorkRecordsImporter implements WorkRecordsImporter {
         } catch (IOException e) {
             throw new ImportException(e);
         }
+    }
+
+    private int findSheetIndex(Workbook workbook) {
+        return workbook.getSheetIndex(new String(SHEET_NAME.getBytes(), UTF_8));
     }
 
     private boolean isCompletelyEmpty(Row row) {
@@ -103,11 +111,12 @@ public class UBWWorkRecordsImporter implements WorkRecordsImporter {
             Calendar maxCalendar = Calendar.getInstance();
             Calendar maxineCalendar = Calendar.getInstance();
             XSSFWorkbook workbook = new XSSFWorkbook(getClass().getResourceAsStream("/example_ubw_report.xlsx"));
-            XSSFSheet sheet = workbook.getSheetAt(SHEET_INDEX);
+            sheetIndex = findSheetIndex(workbook);
+            XSSFSheet sheet = workbook.getSheetAt(sheetIndex);
             XSSFRow row;
             XSSFCell cell;
             int col = 3;
-            int i = sheet.getLastRowNum()-2;
+            int i = sheet.getLastRowNum();
 
             XSSFCellStyle style = workbook.createCellStyle();
             style.setBorderBottom(BorderStyle.THIN);
@@ -170,11 +179,11 @@ public class UBWWorkRecordsImporter implements WorkRecordsImporter {
         return skippedRecords;
     }
 
-
     boolean checkValidity(Workbook workbook) {
-        boolean isValid = workbook.getNumberOfSheets() >= SHEET_INDEX;
+        sheetIndex = findSheetIndex(workbook);
+        boolean isValid = sheetIndex != -1 && workbook.getNumberOfSheets() >= sheetIndex;
         if (isValid) {
-            Sheet sheet = workbook.getSheetAt(SHEET_INDEX);
+            Sheet sheet = workbook.getSheetAt(sheetIndex);
             int headerRowIndex = 2;
             if (sheet.getRow(headerRowIndex) == null) {
                 isValid = false;

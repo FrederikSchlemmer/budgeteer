@@ -97,7 +97,7 @@ public class TemplateEntity implements Serializable {
      * @return A new Template from this TemplateEntity
      */
     public Template getTemplate(){
-        return new Template(id, name, description, type, getWb(), isDefault, projectId);
+        return new Template(id, name, description, type ,getWb(), isDefault, projectId);
     }
 
     /**
