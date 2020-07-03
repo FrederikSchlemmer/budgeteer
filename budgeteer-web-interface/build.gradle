@@ -172,7 +172,6 @@ bootRun {
             '-Dspring.datasource.url=jdbc:hsqldb:mem:budgeteer',
             //'-Dspring.datasource.url=jdbc:hsqldb:hsql://localhost/budgeteer',
             '-Dspring.datasource.driverClassName=org.hsqldb.jdbcDriver',
-            '-Dspring.jpa.properties.hibernate.dialect=',
             '-Dspring.datasource.username=sa',
             '-Dspring.datasource.password=',
             '-Dflyway.enabled=false',
