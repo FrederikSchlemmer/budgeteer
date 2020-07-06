@@ -2,6 +2,7 @@ package org.wickedsource.budgeteer.service.imports;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.joda.money.Money;
@@ -10,9 +11,13 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import org.wickedsource.budgeteer.imports.api.ImportedPlanRecord;
 import org.wickedsource.budgeteer.persistence.budget.BudgetEntity;
+import org.wickedsource.budgeteer.persistence.budget.BudgetRepository;
+import org.wickedsource.budgeteer.persistence.imports.ImportRepository;
 import org.wickedsource.budgeteer.persistence.person.DailyRateRepository;
 import org.wickedsource.budgeteer.persistence.person.PersonEntity;
+import org.wickedsource.budgeteer.persistence.person.PersonRepository;
 import org.wickedsource.budgeteer.persistence.project.ProjectEntity;
+import org.wickedsource.budgeteer.persistence.project.ProjectRepository;
 import org.wickedsource.budgeteer.persistence.record.PlanRecordEntity;
 import org.wickedsource.budgeteer.persistence.record.PlanRecordRepository;
 
@@ -26,18 +31,19 @@ import java.util.stream.Collectors;
 @Scope("prototype")
 public class PlanRecordDatabaseImporter extends RecordDatabaseImporter {
 
-    @Autowired
-    private PlanRecordRepository planRecordRepository;
-
-    @Autowired
-    private DailyRateRepository dailyRateRepository;
+    private final PlanRecordRepository planRecordRepository;
+    private final SimpleDateFormat formatter = new SimpleDateFormat();
 
     private List<List<String>> skippedRecords;
 
-    private SimpleDateFormat formatter = new SimpleDateFormat();
-
-    public PlanRecordDatabaseImporter(long projectId, String importType) {
-        super(projectId, importType);
+    public PlanRecordDatabaseImporter(PlanRecordRepository planRecordRepository,
+                                      PersonRepository personRepository,
+                                      BudgetRepository budgetRepository,
+                                      ProjectRepository projectRepository,
+                                      ImportRepository importRepository,
+                                      long projectId, String importType) {
+        super(personRepository, budgetRepository, projectRepository, importRepository, projectId, importType);
+        this.planRecordRepository = planRecordRepository;
     }
 
     @PostConstruct

@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.contract;
 
+import lombok.RequiredArgsConstructor;
 import org.joda.money.Money;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,28 +25,16 @@ import java.util.*;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class ContractService {
 
-    @Autowired
-    private ContractRepository contractRepository;
-
-    @Autowired
-    private ProjectRepository projectRepository;
-
-    @Autowired
-    private BudgetRepository budgetRepository;
-
-    @Autowired
-    private InvoiceRepository invoiceRepository;
-
-    @Autowired
-    private ManualRecordRepository manualRecordRepository;
-
-    @Autowired
-    private WorkRecordRepository workRecordRepository;
-
-    @Autowired
-    private ContractDataMapper mapper;
+    private final ContractRepository contractRepository;
+    private final ProjectRepository projectRepository;
+    private final BudgetRepository budgetRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final ManualRecordRepository manualRecordRepository;
+    private final WorkRecordRepository workRecordRepository;
+    private final ContractDataMapper mapper;
 
     @PreAuthorize("canReadContract(#contractId)")
     public Money getBudgetLeft(long contractId) {

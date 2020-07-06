@@ -28,26 +28,24 @@ import org.wickedsource.budgeteer.web.BudgeteerSession;
 @Component
 public class BudgeteerMethodSecurityExpressionRoot extends SecurityExpressionRoot implements MethodSecurityExpressionOperations {
 
-    @Autowired
-    private BudgetRepository budgetRepository;
-
-    @Autowired
-    private ContractRepository contractRepository;
-
-    @Autowired
-    private InvoiceRepository invoiceRepository;
-
-    @Autowired
-    private PersonRepository personRepository;
+    private final BudgetRepository budgetRepository;
+    private final ContractRepository contractRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final PersonRepository personRepository;
 
     private Object filterObject;
-
     private Object returnObject;
 
-    public BudgeteerMethodSecurityExpressionRoot() {
+    @Autowired
+    public BudgeteerMethodSecurityExpressionRoot(BudgetRepository budgetRepository, ContractRepository contractRepository, InvoiceRepository invoiceRepository, PersonRepository personRepository) {
         // supply a placeholder token that will not be used by this root
         // all authorization is performed
         super(new UsernamePasswordAuthenticationToken("user", "password"));
+
+        this.budgetRepository = budgetRepository;
+        this.contractRepository = contractRepository;
+        this.invoiceRepository = invoiceRepository;
+        this.personRepository = personRepository;
 
         // set default values
         this.setPermissionEvaluator(new DenyAllPermissionEvaluator());

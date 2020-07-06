@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.budget.report;
 
+import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFFormulaEvaluator;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -34,19 +35,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class BudgetReportService {
 
-	@Autowired
-	private BudgetService budgetService;
-
-	@Autowired
-	private ContractService contractService;
-
-	@Autowired
-	private WorkRecordRepository workRecordRepository;
-
-	@Autowired
-	private TemplateService templateService;
+	private final BudgetService budgetService;
+	private final ContractService contractService;
+	private final WorkRecordRepository workRecordRepository;
+	private final TemplateService templateService;
 
 	/**
 	 * Creates an excel spreadsheet containing the budgets informations

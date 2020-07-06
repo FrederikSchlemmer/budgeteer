@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.statistics;
 
+import lombok.RequiredArgsConstructor;
 import org.joda.money.Money;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,30 +19,15 @@ import java.util.*;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class StatisticsService {
 
-    private Random random = new Random();
-
-    @Autowired
-    private WorkRecordRepository workRecordRepository;
-
-    @Autowired
-    private ManualRecordRepository manualRecordRepository;
-
-    @Autowired
-    private PlanRecordRepository planRecordRepository;
-
-    @Autowired
-    private DateUtil dateUtil;
-
-    @Autowired
-    private ShareBeanToShareMapper shareBeanToShareMapper;
-
-    @Autowired
-    private ContractRepository contractRepository;
-
-    @Autowired
-    private InvoiceRepository invoiceRepository;
+    private final WorkRecordRepository workRecordRepository;
+    private final ManualRecordRepository manualRecordRepository;
+    private final PlanRecordRepository planRecordRepository;
+    private final DateUtil dateUtil;
+    private final ShareBeanToShareMapper shareBeanToShareMapper;
+    private final ContractRepository contractRepository;
 
     /**
      * Returns the budget burned in each of the last numberOfWeeks weeks. All of the project's budgets are aggregated.

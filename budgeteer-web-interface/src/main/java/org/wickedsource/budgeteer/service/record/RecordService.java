@@ -1,6 +1,7 @@
 package org.wickedsource.budgeteer.service.record;
 
 import com.querydsl.core.types.Predicate;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.wickedsource.budgeteer.ListUtil;
@@ -15,25 +16,14 @@ import java.util.*;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class RecordService {
 
-    @Autowired
-    private WorkRecordRepository workRecordRepository;
-
-    @Autowired
-    private PlanRecordRepository planRecordRepository;
-
-    @Autowired
-    private BudgetRepository budgetRepository;
-
-    @Autowired
-    private RecordJoiner recordJoiner;
-
-    @Autowired
-    private WorkRecordMapper recordMapper;
-
-    @Autowired
-    private ManualRecordRepository manualRecordRepository;
+    private final WorkRecordRepository workRecordRepository;
+    private final PlanRecordRepository planRecordRepository;
+    private final RecordJoiner recordJoiner;
+    private final WorkRecordMapper recordMapper;
+    private final ManualRecordRepository manualRecordRepository;
 
     /**
      * Loads the actual budget burned by the given person and the budget planned for this person aggregated by week.

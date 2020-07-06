@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.template;
 
+import lombok.RequiredArgsConstructor;
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -22,10 +23,10 @@ import java.util.List;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class TemplateService {
 
-    @Autowired
-    private TemplateRepository templateRepository;
+    private final TemplateRepository templateRepository;
 
     /**
      *

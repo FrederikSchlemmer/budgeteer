@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.imports;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.wickedsource.budgeteer.MoneyUtil;
 import org.wickedsource.budgeteer.persistence.budget.BudgetEntity;
@@ -18,33 +19,25 @@ import java.util.Map;
 
 public abstract class RecordDatabaseImporter {
 
-    @Autowired
-    private PersonRepository personRepository;
-
-    @Autowired
-    private BudgetRepository budgetRepository;
-
-    @Autowired
-    private ProjectRepository projectRepository;
-
-    @Autowired
-    private ImportRepository importRepository;
+    private final PersonRepository personRepository;
+    private final BudgetRepository budgetRepository;
+    private final ProjectRepository projectRepository;
+    private final ImportRepository importRepository;
 
     private Map<String, PersonEntity> personsByImportKey;
-
     private Map<String, BudgetEntity> budgetsByImportKey;
-
     private ProjectEntity project;
-
     private long projectId;
-
     private String importType;
-
     private ImportEntity importRecord;
 
-    public RecordDatabaseImporter(long projectId, String importType) {
+    public RecordDatabaseImporter(PersonRepository personRepository, BudgetRepository budgetRepository, ProjectRepository projectRepository, ImportRepository importRepository, long projectId, String importType) {
         this.projectId = projectId;
         this.importType = importType;
+        this.personRepository = personRepository;
+        this.budgetRepository = budgetRepository;
+        this.projectRepository = projectRepository;
+        this.importRepository = importRepository;
     }
 
     public void init() {

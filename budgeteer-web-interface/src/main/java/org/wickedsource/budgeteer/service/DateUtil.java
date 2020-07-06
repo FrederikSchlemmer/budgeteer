@@ -1,15 +1,16 @@
 package org.wickedsource.budgeteer.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 
+@RequiredArgsConstructor
 @Component
 public class DateUtil {
 
-    @Autowired
-    private DateProvider dateProvider;
+    private final DateProvider dateProvider;
 
     /**
      * Returns the current date minus a number of weeks.

@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.contract.report;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.wickedsource.budgeteer.MoneyUtil;
@@ -15,10 +16,10 @@ import java.time.ZoneId;
 import java.util.*;
 
 @Component
+@RequiredArgsConstructor
 public class ContractReportDataMapper {
 
-	@Autowired
-	private ContractRepository contractRepository;
+	private final ContractRepository contractRepository;
 	
 	public ContractReportData map(ContractEntity contract, Date endDate) {
 		LocalDate end = endDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();

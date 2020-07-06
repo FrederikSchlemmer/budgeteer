@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.project;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -25,43 +26,21 @@ import java.util.List;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class ProjectService {
 
-    @Autowired
-    private ProjectRepository projectRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private BudgetRepository budgetRepository;
-
-    @Autowired
-    private PersonRepository personRepository;
-
-    @Autowired
-    private ImportRepository importRepository;
-
-    @Autowired
-    private PlanRecordRepository planRecordRepository;
-
-    @Autowired
-    private WorkRecordRepository workRecordRepository;
-
-    @Autowired
-    private ProjectBaseDataMapper mapper;
-
-    @Autowired
-    private DailyRateRepository dailyRateRepository;
-
-    @Autowired
-    private InvoiceRepository invoiceRepository;
-
-    @Autowired
-    private ContractRepository contractRepository;
-
-    @Autowired
-    private ContractSortingRepository contractSortingRepository;
+    private final ProjectRepository projectRepository;
+    private final UserRepository userRepository;
+    private final BudgetRepository budgetRepository;
+    private final PersonRepository personRepository;
+    private final ImportRepository importRepository;
+    private final PlanRecordRepository planRecordRepository;
+    private final WorkRecordRepository workRecordRepository;
+    private final ProjectBaseDataMapper mapper;
+    private final DailyRateRepository dailyRateRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final ContractRepository contractRepository;
+    private final ContractSortingRepository contractSortingRepository;
 
     /**
      * Creates a new empty project with the given name.

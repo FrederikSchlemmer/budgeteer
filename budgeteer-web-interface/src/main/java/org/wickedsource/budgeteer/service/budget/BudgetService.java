@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.budget;
 
+import lombok.RequiredArgsConstructor;
 import org.joda.money.BigMoney;
 import org.joda.money.Money;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,34 +31,18 @@ import java.util.*;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class BudgetService {
 
-    @Autowired
-    private BudgetRepository budgetRepository;
-
-    @Autowired
-    private BudgetBaseDataMapper budgetBaseDataMapper;
-
-    @Autowired
-    private WorkRecordRepository workRecordRepository;
-
-    @Autowired
-    private PlanRecordRepository planRecordRepository;
-
-    @Autowired
-    private DailyRateRepository rateRepository;
-
-    @Autowired
-    private ProjectRepository projectRepository;
-
-    @Autowired
-    private ContractRepository contractRepository;
-
-    @Autowired
-    private ContractDataMapper contractDataMapper;
-
-    @Autowired
-    private ManualRecordRepository manualRecordRepository;
+    private final BudgetRepository budgetRepository;
+    private final BudgetBaseDataMapper budgetBaseDataMapper;
+    private final WorkRecordRepository workRecordRepository;
+    private final PlanRecordRepository planRecordRepository;
+    private final DailyRateRepository rateRepository;
+    private final ProjectRepository projectRepository;
+    private final ContractRepository contractRepository;
+    private final ContractDataMapper contractDataMapper;
+    private final ManualRecordRepository manualRecordRepository;
 
     /**
      * Loads all Budgets that the given user is qualified for and returns base data about them.

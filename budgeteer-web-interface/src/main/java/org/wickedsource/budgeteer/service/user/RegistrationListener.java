@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.user;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.MessageSource;
@@ -8,19 +9,20 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 import org.wickedsource.budgeteer.persistence.user.UserEntity;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
 public class RegistrationListener implements ApplicationListener<OnRegistrationCompleteEvent> {
 
-    @Autowired
     private UserService userService;
+    private JavaMailSender javaMailSender;
 
     @Autowired
-    private MessageSource messageSource;
-
-    @Autowired(required = false)
-    private JavaMailSender javaMailSender;
+    public RegistrationListener(Optional<UserService> userService, Optional<JavaMailSender> javaMailSender){
+        userService.ifPresent(service-> this.userService = service);
+        javaMailSender.ifPresent(service-> this.javaMailSender = service);
+    }
 
     /**
      * Sends a mail with a link to verify the mail address as soon as the user registers.

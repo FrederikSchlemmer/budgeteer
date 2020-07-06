@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.notification;
 
+import lombok.RequiredArgsConstructor;
 import org.joda.money.Money;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,34 +22,18 @@ import java.util.List;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class NotificationService {
 
-    @Autowired
-    private WorkRecordRepository workRecordRepository;
-
-    @Autowired
-    private PlanRecordRepository planRecordRepository;
-
-    @Autowired
-    private BudgetRepository budgetRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private RecordService recordService;
-
-    @Autowired
-    private MissingDailyRateNotificationMapper missingDailyRateMapper;
-
-    @Autowired
-    private MissingBudgetTotalNotificationMapper missingBudgetTotalNotificationMapper;
-
-    @Autowired
-    private LimitReachedNotificationMapper limitReachedNotificationMapper;
-
-    @Autowired
-    private MissingDailyRateForBudgetNotificationMapper missingDailyRateForBudgetNotificationMapper;
+    private final WorkRecordRepository workRecordRepository;
+    private final PlanRecordRepository planRecordRepository;
+    private final BudgetRepository budgetRepository;
+    private final UserRepository userRepository;
+    private final RecordService recordService;
+    private final MissingDailyRateNotificationMapper missingDailyRateMapper;
+    private final MissingBudgetTotalNotificationMapper missingBudgetTotalNotificationMapper;
+    private final LimitReachedNotificationMapper limitReachedNotificationMapper;
+    private final MissingDailyRateForBudgetNotificationMapper missingDailyRateForBudgetNotificationMapper;
 
     /**
      * Returns all notifications currently available for the given project

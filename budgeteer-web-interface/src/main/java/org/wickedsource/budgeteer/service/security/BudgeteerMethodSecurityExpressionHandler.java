@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.security;
 
+import lombok.RequiredArgsConstructor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
@@ -14,15 +15,11 @@ import org.springframework.stereotype.Component;
  *
  * @see BudgeteerMethodSecurityExpressionRoot
  */
+@RequiredArgsConstructor
 @Component
 public class BudgeteerMethodSecurityExpressionHandler extends DefaultMethodSecurityExpressionHandler {
 
     private final BudgeteerMethodSecurityExpressionRoot root;
-
-    @Autowired
-    public BudgeteerMethodSecurityExpressionHandler(BudgeteerMethodSecurityExpressionRoot root) {
-        this.root = root;
-    }
 
     @Override
     protected MethodSecurityExpressionOperations createSecurityExpressionRoot(Authentication authentication, MethodInvocation invocation) {

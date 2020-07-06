@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.user;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
@@ -16,28 +17,16 @@ import java.util.List;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private VerificationTokenRepository verificationTokenRepository;
-
-    @Autowired
-    private ForgotPasswordTokenRepository forgotPasswordTokenRepository;
-
-    @Autowired
-    private ProjectRepository projectRepository;
-
-    @Autowired
-    private PasswordHasher passwordHasher;
-
-    @Autowired
-    private UserMapper mapper;
-
-    @Autowired
-    private ApplicationEventPublisher applicationEventPublisher;
+    private final UserRepository userRepository;
+    private final VerificationTokenRepository verificationTokenRepository;
+    private final ForgotPasswordTokenRepository forgotPasswordTokenRepository;
+    private final ProjectRepository projectRepository;
+    private final PasswordHasher passwordHasher;
+    private final UserMapper mapper;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Value("${budgeteer.mail.activate}")
     private String mailActivated;

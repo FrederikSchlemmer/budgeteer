@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.contract;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.wickedsource.budgeteer.persistence.contract.ContractRepository;
@@ -12,19 +13,13 @@ import java.util.List;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class ContractSortingService {
 
-    @Autowired
-    UserRepository userRepository;
-
-    @Autowired
-    private ContractSortingRepository contractSortingRepository;
-
-    @Autowired
-    ContractService contractService;
-
-    @Autowired
-    ContractRepository contractRepository;
+    private final UserRepository userRepository;
+    private final ContractSortingRepository contractSortingRepository;
+    private final ContractService contractService;
+    private final ContractRepository contractRepository;
 
     public List<ContractBaseData> getSortedContracts(long projectId, long userId){
         List<ContractBaseData> contractBaseData = contractService.getContractsByProject(projectId);

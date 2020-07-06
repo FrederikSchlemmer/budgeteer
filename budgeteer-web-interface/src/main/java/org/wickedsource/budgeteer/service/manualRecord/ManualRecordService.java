@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.manualRecord;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.wickedsource.budgeteer.persistence.budget.BudgetEntity;
@@ -11,15 +12,15 @@ import javax.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class ManualRecordService {
-    @Autowired
-    private ManualRecordRepository manualRecordRepository;
 
-    @Autowired
-    private BudgetRepository budgetRepository;
+    private final ManualRecordRepository manualRecordRepository;
+    private final BudgetRepository budgetRepository;
 
     public List<ManualRecord> getManualRecords(long budgetId) {
         List<ManualRecordEntity> entities = manualRecordRepository.getManualRecordByBudgetId(budgetId);

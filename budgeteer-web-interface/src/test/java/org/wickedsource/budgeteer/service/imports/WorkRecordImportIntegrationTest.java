@@ -18,8 +18,10 @@ import org.wickedsource.budgeteer.imports.api.InvalidFileFormatException;
 import org.wickedsource.budgeteer.persistence.budget.BudgetRepository;
 import org.wickedsource.budgeteer.persistence.imports.ImportEntity;
 import org.wickedsource.budgeteer.persistence.imports.ImportRepository;
+import org.wickedsource.budgeteer.persistence.person.DailyRateRepository;
 import org.wickedsource.budgeteer.persistence.person.PersonRepository;
 import org.wickedsource.budgeteer.persistence.project.ProjectEntity;
+import org.wickedsource.budgeteer.persistence.project.ProjectRepository;
 import org.wickedsource.budgeteer.persistence.record.WorkRecordEntity;
 import org.wickedsource.budgeteer.persistence.record.WorkRecordRepository;
 
@@ -47,6 +49,12 @@ class WorkRecordImportIntegrationTest extends IntegrationTestTemplate {
 
     @Autowired
     private ImportRepository importRepository;
+
+    @Autowired
+    private ProjectRepository projectRepository;
+
+    @Autowired
+    private DailyRateRepository rateRepository;
 
     @Autowired
     private ApplicationContext applicationContext;
@@ -122,7 +130,9 @@ class WorkRecordImportIntegrationTest extends IntegrationTestTemplate {
     @DatabaseTearDown(value = "doImportWithData.xml", type = DatabaseOperation.DELETE_ALL)
     void testFindAndRemoveManuallyEditedEntries() throws Exception {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-        WorkRecordDatabaseImporter importer = applicationContext.getBean(WorkRecordDatabaseImporter.class, 1L, "Test");
+        WorkRecordDatabaseImporter importer = applicationContext.getBean(WorkRecordDatabaseImporter.class,
+                personRepository, budgetRepository, projectRepository, importRepository, workRecordRepository, rateRepository
+                ,1L, "Test");
         importer.setEarliestRecordDate(formatter.parse("2012-01-01"));
         importer.setLatestRecordDate(formatter.parse("2016-08-15"));
 

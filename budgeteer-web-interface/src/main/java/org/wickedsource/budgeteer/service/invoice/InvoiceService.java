@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.invoice;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -19,17 +20,13 @@ import java.util.Set;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class InvoiceService {
     private static final SimpleDateFormat formatter = new SimpleDateFormat("dd.MM.yyyy");
 
-    @Autowired
-    private InvoiceDataMapper mapper;
-
-    @Autowired
-    private InvoiceRepository invoiceRepository;
-
-    @Autowired
-    private ContractRepository contractRepository;
+    private final InvoiceDataMapper mapper;
+    private final InvoiceRepository invoiceRepository;
+    private final ContractRepository contractRepository;
 
     @PreAuthorize("canReadProject(#projectId)")
     public InvoiceOverviewTableModel getInvoiceOverviewByProject(long projectId){

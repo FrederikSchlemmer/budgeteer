@@ -1,6 +1,7 @@
 package org.wickedsource.budgeteer.service.imports;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -8,8 +9,12 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Service;
 import org.wickedsource.budgeteer.MoneyUtil;
 import org.wickedsource.budgeteer.imports.api.*;
+import org.wickedsource.budgeteer.persistence.budget.BudgetRepository;
 import org.wickedsource.budgeteer.persistence.imports.ImportEntity;
 import org.wickedsource.budgeteer.persistence.imports.ImportRepository;
+import org.wickedsource.budgeteer.persistence.person.DailyRateRepository;
+import org.wickedsource.budgeteer.persistence.person.PersonRepository;
+import org.wickedsource.budgeteer.persistence.project.ProjectRepository;
 import org.wickedsource.budgeteer.persistence.record.PlanRecordRepository;
 import org.wickedsource.budgeteer.persistence.record.WorkRecordRepository;
 
@@ -18,21 +23,19 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+@RequiredArgsConstructor
 @Service
 @Transactional
 public class ImportService implements ApplicationContextAware {
 
-    @Autowired
-    private ImporterRegistry importerRegistry;
-
-    @Autowired
-    private ImportRepository importRepository;
-
-    @Autowired
-    private WorkRecordRepository workRecordRepository;
-
-    @Autowired
-    private PlanRecordRepository planRecordRepository;
+    private final ImporterRegistry importerRegistry;
+    private final ImportRepository importRepository;
+    private final WorkRecordRepository workRecordRepository;
+    private final PlanRecordRepository planRecordRepository;
+    private final PersonRepository personRepository;
+    private final BudgetRepository budgetRepository;
+    private final ProjectRepository projectRepository;
+    private final DailyRateRepository rateRepository;
 
     private ApplicationContext applicationContext;
 
@@ -94,7 +97,8 @@ public class ImportService implements ApplicationContextAware {
         skippedRecords = new LinkedList<>();
         if (importer instanceof WorkRecordsImporter) {
             WorkRecordsImporter workRecordsImporter = (WorkRecordsImporter) importer;
-            WorkRecordDatabaseImporter dbImporter = applicationContext.getBean(WorkRecordDatabaseImporter.class, projectId, workRecordsImporter.getDisplayName());
+            WorkRecordDatabaseImporter dbImporter = applicationContext.getBean(WorkRecordDatabaseImporter.class,
+                    personRepository, budgetRepository, projectRepository, importRepository, workRecordRepository, rateRepository, projectId, workRecordsImporter.getDisplayName());
             for (ImportFile file : importFiles) {
                 List<ImportedWorkRecord> records = workRecordsImporter.importFile(file);
                 dbImporter.importRecords(records);
@@ -104,7 +108,8 @@ public class ImportService implements ApplicationContextAware {
             skippedRecords.addAll(dbImporter.findAndRemoveManuallyEditedEntries());
         } else if (importer instanceof PlanRecordsImporter) {
             PlanRecordsImporter planRecordsImporter = (PlanRecordsImporter) importer;
-            PlanRecordDatabaseImporter dbImporter = applicationContext.getBean(PlanRecordDatabaseImporter.class, projectId, planRecordsImporter.getDisplayName());
+            PlanRecordDatabaseImporter dbImporter = applicationContext.getBean(PlanRecordDatabaseImporter.class,
+                    planRecordRepository, personRepository, budgetRepository, projectRepository, importRepository, projectId, planRecordsImporter.getDisplayName());
             for (ImportFile file : importFiles) {
                 List<ImportedPlanRecord> records = planRecordsImporter.importFile(file, MoneyUtil.DEFAULT_CURRENCY);
                 dbImporter.importRecords(records, file.getFilename());

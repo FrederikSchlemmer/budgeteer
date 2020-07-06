@@ -8,18 +8,21 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 import org.wickedsource.budgeteer.persistence.user.UserEntity;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
 public class ForgotPasswordListener implements ApplicationListener<OnForgotPasswordEvent> {
-    @Autowired
+
     private UserService userService;
+    private JavaMailSender javaMailSender;
+
 
     @Autowired
-    private MessageSource messageSource;
-
-    @Autowired(required = false)
-    private JavaMailSender javaMailSender;
+    public ForgotPasswordListener(Optional<UserService> userService, Optional<JavaMailSender> javaMailSender){
+        userService.ifPresent(service-> this.userService = service);
+        javaMailSender.ifPresent(service-> this.javaMailSender = service);
+    }
 
     /**
      * Sends a mail with a link to reset the password as soon as a user requests a new one via the corresponding page.

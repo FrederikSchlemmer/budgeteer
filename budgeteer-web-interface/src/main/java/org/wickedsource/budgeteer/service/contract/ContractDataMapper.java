@@ -1,7 +1,9 @@
 package org.wickedsource.budgeteer.service.contract;
 
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.wickedsource.budgeteer.persistence.budget.BudgetEntity;
 import org.wickedsource.budgeteer.persistence.contract.ContractEntity;
@@ -18,11 +20,16 @@ import java.util.*;
 @Component
 public class ContractDataMapper extends AbstractMapper<ContractEntity, ContractBaseData> {
 
-    @Autowired
-    private InvoiceDataMapper invoiceDataMapper;
+    private final InvoiceDataMapper invoiceDataMapper;
+    private final ContractService contractService;
 
+    //Major design issue, which should be fixed in the future!
     @Autowired
-    private ContractService contractService;
+    public ContractDataMapper(InvoiceDataMapper invoiceDataMapper, @Lazy ContractService contractService) {
+        super();
+        this.invoiceDataMapper = invoiceDataMapper;
+        this.contractService = contractService;
+    }
 
     @Override
     public ContractBaseData map(ContractEntity entity) {

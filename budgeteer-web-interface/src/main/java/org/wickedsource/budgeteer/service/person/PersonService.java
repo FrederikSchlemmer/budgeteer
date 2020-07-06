@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.person;
 
+import lombok.RequiredArgsConstructor;
 import org.joda.money.CurrencyUnit;
 import org.joda.money.Money;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,25 +25,15 @@ import java.util.List;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class PersonService {
 
-    @Autowired
-    private PersonRepository personRepository;
-
-    @Autowired
-    private PersonBaseDataMapper personBaseDataMapper;
-
-    @Autowired
-    private PersonDetailDataMapper personDetailDataMapper;
-
-    @Autowired
-    private BudgetRepository budgetRepository;
-
-    @Autowired
-    private WorkRecordRepository workRecordRepository;
-
-    @Autowired
-    private RecordService recordService;
+    private final PersonRepository personRepository;
+    private final PersonBaseDataMapper personBaseDataMapper;
+    private final PersonDetailDataMapper personDetailDataMapper;
+    private final BudgetRepository budgetRepository;
+    private final WorkRecordRepository workRecordRepository;
+    private final RecordService recordService;
 
     /**
      * Returns all people the given user can make use of to manage budgets.

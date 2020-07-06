@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.contract.report;
 
+import lombok.RequiredArgsConstructor;
 import org.apache.poi.xssf.usermodel.XSSFFormulaEvaluator;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -21,19 +22,13 @@ import java.util.stream.Collectors;
 
 @Transactional
 @Service
+@RequiredArgsConstructor
 public class ContractReportService {
 
-	@Autowired
-	private ContractRepository contractRepository;
-
-	@Autowired
-	private ContractReportDataMapper mapper;
-	
-	@Autowired
-	private ContractReportMonthlyDataMapper monthlyMapper;
-
-	@Autowired
-	private TemplateService templateService;
+	private final ContractRepository contractRepository;
+	private final ContractReportDataMapper mapper;
+	private final ContractReportMonthlyDataMapper monthlyMapper;
+	private final TemplateService templateService;
 	
 	public File createReportFile(long templateId, long projectId,Date endDate) {
 		XSSFWorkbook wb = getSheetWorkbook(templateId);

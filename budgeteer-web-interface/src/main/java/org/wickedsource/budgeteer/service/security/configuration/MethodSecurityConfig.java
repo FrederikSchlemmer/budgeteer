@@ -1,5 +1,6 @@
 package org.wickedsource.budgeteer.service.security.configuration;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
@@ -16,14 +17,10 @@ import org.wickedsource.budgeteer.service.security.BudgeteerMethodSecurityExpres
  */
 @Configuration
 @EnableGlobalMethodSecurity(prePostEnabled = true)
+@RequiredArgsConstructor
 public class MethodSecurityConfig extends GlobalMethodSecurityConfiguration {
 
     private final BudgeteerMethodSecurityExpressionHandler handler;
-
-    @Autowired
-    public MethodSecurityConfig(BudgeteerMethodSecurityExpressionHandler handler) {
-        this.handler = handler;
-    }
 
     @Override
     protected MethodSecurityExpressionHandler createExpressionHandler() {

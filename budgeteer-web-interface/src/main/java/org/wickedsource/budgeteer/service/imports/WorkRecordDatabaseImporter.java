@@ -9,9 +9,13 @@ import org.springframework.stereotype.Component;
 import org.wickedsource.budgeteer.MoneyUtil;
 import org.wickedsource.budgeteer.imports.api.ImportedWorkRecord;
 import org.wickedsource.budgeteer.persistence.budget.BudgetEntity;
+import org.wickedsource.budgeteer.persistence.budget.BudgetRepository;
+import org.wickedsource.budgeteer.persistence.imports.ImportRepository;
 import org.wickedsource.budgeteer.persistence.person.DailyRateEntity;
 import org.wickedsource.budgeteer.persistence.person.DailyRateRepository;
+import org.wickedsource.budgeteer.persistence.person.PersonRepository;
 import org.wickedsource.budgeteer.persistence.project.ProjectEntity;
+import org.wickedsource.budgeteer.persistence.project.ProjectRepository;
 import org.wickedsource.budgeteer.persistence.record.WorkRecordEntity;
 import org.wickedsource.budgeteer.persistence.record.WorkRecordRepository;
 
@@ -26,11 +30,8 @@ import java.util.List;
 @Scope("prototype")
 public class WorkRecordDatabaseImporter extends RecordDatabaseImporter {
 
-    @Autowired
-    private WorkRecordRepository workRecordRepository;
-
-    @Autowired
-    private DailyRateRepository rateRepository;
+    private final WorkRecordRepository workRecordRepository;
+    private final DailyRateRepository rateRepository;
 
     @Getter @Setter
     private Date earliestRecordDate = new Date(Long.MAX_VALUE);
@@ -40,12 +41,20 @@ public class WorkRecordDatabaseImporter extends RecordDatabaseImporter {
 
     private List<DailyRateEntity> dailyRates;
 
-    public WorkRecordDatabaseImporter(long projectId, String importType) {
-        super(projectId, importType);
+    public WorkRecordDatabaseImporter(PersonRepository personRepository,
+                                      BudgetRepository budgetRepository,
+                                      ProjectRepository projectRepository,
+                                      ImportRepository importRepository,
+                                      WorkRecordRepository workRecordRepository,
+                                      DailyRateRepository rateRepository,
+                                      long projectId, String importType) {
+        super(personRepository, budgetRepository, projectRepository, importRepository, projectId, importType);
+        this.workRecordRepository = workRecordRepository;
+        this.rateRepository = rateRepository;
     }
 
-    private List<List<String>> skippedRecords = new LinkedList<>();
-    private SimpleDateFormat format = new SimpleDateFormat();
+    private final List<List<String>> skippedRecords = new LinkedList<>();
+    private final SimpleDateFormat format = new SimpleDateFormat();
 
     @PostConstruct
     public void init() {
