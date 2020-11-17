@@ -4,17 +4,22 @@ import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.form.AjaxButton;
 import org.apache.wicket.injection.Injector;
 import org.apache.wicket.markup.html.WebMarkupContainer;
+import org.apache.wicket.markup.html.WebPage;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.form.*;
+import org.apache.wicket.markup.html.link.Link;
 import org.apache.wicket.markup.html.list.ListItem;
 import org.apache.wicket.markup.html.list.ListView;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.Model;
 import org.apache.wicket.model.StringResourceModel;
+import org.apache.wicket.request.mapper.parameter.PageParameters;
 import org.apache.wicket.spring.injection.annot.SpringBean;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.wickedsource.budgeteer.persistence.contract.ContractEntity;
 import org.wickedsource.budgeteer.service.DateUtil;
+import org.wickedsource.budgeteer.service.budget.BudgetService;
+import org.wickedsource.budgeteer.service.budget.EditBudgetData;
 import org.wickedsource.budgeteer.service.contract.ContractBaseData;
 import org.wickedsource.budgeteer.service.contract.ContractService;
 import org.wickedsource.budgeteer.service.contract.DynamicAttributeField;
@@ -23,6 +28,8 @@ import org.wickedsource.budgeteer.web.components.customFeedback.CustomFeedbackPa
 import org.wickedsource.budgeteer.web.components.daterange.DateInputField;
 import org.wickedsource.budgeteer.web.components.fileUpload.CustomFileUpload;
 import org.wickedsource.budgeteer.web.components.money.MoneyTextField;
+import org.wickedsource.budgeteer.web.pages.budgets.edit.EditBudgetPage;
+import org.wickedsource.budgeteer.web.pages.contract.overview.ContractOverviewPage;
 
 import java.util.Arrays;
 
@@ -34,9 +41,13 @@ public class EditContractForm extends Form<ContractBaseData> {
     @SpringBean
     private ContractService service;
 
+    @SpringBean
+    private BudgetService budgetService;
+
     private WebMarkupContainer table;
 
     private String submitButtonTextKey;
+    private Link<ContractBaseData> createBudget;
 
     private TextField<String> newAttributeField;
     private CustomFeedbackPanel feedbackPanel;
@@ -123,6 +134,17 @@ public class EditContractForm extends Form<ContractBaseData> {
         };
         addAttribute.setOutputMarkupId(true);
         add(addAttribute);
+
+        createBudget = new Link<ContractBaseData>("createBudgetLink") {
+            @Override
+            public void onClick() {
+                WebPage page = new EditBudgetPage(ContractOverviewPage.class, new PageParameters(), createAndFillEditBudgetData(EditContractForm.this.getModelObject()));
+                setResponsePage(page);
+            }
+        };
+        createBudget.setVisible(submitButtonTextKey.equals("button.save.editmode"));
+        add(createBudget);
+
         add(new AjaxButton("save", new StringResourceModel(submitButtonTextKey)) {
             @Override
             protected void onSubmit(AjaxRequestTarget target, Form<?> form) {
@@ -131,6 +153,7 @@ public class EditContractForm extends Form<ContractBaseData> {
                     ((ContractBaseData) form.getModelObject()).getFileModel().setFileName(fileUpload.getFileName());
                     ((ContractBaseData) form.getModelObject()).setContractId(service.save((ContractBaseData) form.getModelObject()));
                     if(submitButtonTextKey.equals("button.save.createmode")){
+                        createBudget.setVisible(true);
                         submitButtonTextKey = "button.save.editmode";
                         this.setDefaultModel(new StringResourceModel(submitButtonTextKey));
                         target.add(this);
@@ -152,5 +175,14 @@ public class EditContractForm extends Form<ContractBaseData> {
                 target.add(feedbackPanel);
             }
         }.setOutputMarkupId(true));
+    }
+
+    private EditBudgetData createAndFillEditBudgetData(ContractBaseData modelObject) {
+        EditBudgetData budgetData = new EditBudgetData();
+        budgetData.setContract(service.getContractById(modelObject.getContractId()));
+        budgetData.setTitle(modelObject.getContractName());
+        budgetData.setProjectId(BudgeteerSession.get().getProjectId());
+        budgetData.setTotal(modelObject.getBudget().minus(budgetService.getBookedTotalBudgetOfContract(modelObject.getContractId(), null)));
+        return budgetData;
     }
 }

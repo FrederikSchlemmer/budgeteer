@@ -28,6 +28,8 @@ import javax.transaction.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 @Service
@@ -336,6 +338,29 @@ public class BudgetService {
             }
         }
         return result;
+    }
+
+    /**
+     * Returns the total booked budget of the passed contract. The passed budget will be excluded if the ID matches.
+     * When passing null for excludeBudget all budgets of the contract are considered.
+     *
+     * @param cId ID of the contract, whose budget total should be calculated.
+     * @param excludeBudget Budget, which will be excluded in the calculation.
+     * @return The total booked budget of the contract, excluding the passed budget in excludeBudget.
+     */
+    @PreAuthorize("canReadContract(#cId)")
+    public Money getBookedTotalBudgetOfContract(long cId, EditBudgetData excludeBudget) {
+        List<BudgetDetailData> allBudgetsByContract = loadBudgetByContract(cId);
+        if (excludeBudget != null) {
+            allBudgetsByContract.removeIf(budgetDetailData -> budgetDetailData.getId() == excludeBudget.getId());
+        }
+
+        double leftBudget = allBudgetsByContract.stream()
+                .map(BudgetDetailData::getTotal)
+                .mapToDouble(MoneyUtil::toDouble)
+                .sum();
+
+        return MoneyUtil.createMoney(leftBudget);
     }
 
     public List<OptionGroup<BudgetBaseData>> getPossibleBudgetDataForPersonAndProject(long projectId, long personId) {

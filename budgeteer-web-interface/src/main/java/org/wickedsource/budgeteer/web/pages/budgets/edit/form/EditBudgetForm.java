@@ -16,7 +16,8 @@ import org.apache.wicket.model.Model;
 import org.apache.wicket.model.ResourceModel;
 import org.apache.wicket.request.mapper.parameter.PageParameters;
 import org.apache.wicket.spring.injection.annot.SpringBean;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.joda.money.Money;
+import org.wickedsource.budgeteer.MoneyUtil;
 import org.wickedsource.budgeteer.service.budget.BudgetService;
 import org.wickedsource.budgeteer.service.budget.EditBudgetData;
 import org.wickedsource.budgeteer.service.contract.ContractBaseData;
@@ -35,6 +36,7 @@ import org.wickedsource.budgeteer.web.pages.budgets.exception.InvalidBudgetImpor
 import org.wickedsource.budgeteer.web.pages.budgets.exception.InvalidBudgetNameException;
 import org.wickedsource.budgeteer.web.pages.budgets.overview.BudgetsOverviewPage;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.wicketstuff.lazymodel.LazyModel.from;
@@ -138,6 +140,24 @@ public class EditBudgetForm extends Form<EditBudgetData> {
     @Override
     protected void onSubmit() {
         try {
+            Money burnedBudget = service.getBookedTotalBudgetOfContract(getModelObject().getContract().getContractId(), getModelObject());
+            Money remainingBudgetOfContract = getModelObject().getContract().getBudget().minus(burnedBudget);
+
+            if (getModelObject().getTotal().isGreaterThan(remainingBudgetOfContract)) {
+                Money exceededContractTotalByBudgetTotal = getModelObject().getTotal().minus(remainingBudgetOfContract);
+                Money neededExtendedContractTotal = getModelObject().getContract().getBudget().plus(exceededContractTotalByBudgetTotal);
+
+                this.error(String.format("The total budget of %s extends the total budget of the contract %s by %s. " +
+                                "In order to save this budget the contract total net needs to be raised to %s, which leads to a gross value of %s"
+                        , getModelObject().getTotal()
+                        , getModelObject().getContract().getContractName()
+                        , exceededContractTotalByBudgetTotal
+                        , neededExtendedContractTotal
+                        , MoneyUtil.getMoneyWithTaxes(neededExtendedContractTotal
+                                ,BigDecimal.valueOf(getModelObject().getContract().getTaxRate()))));
+                return;
+            }
+
             if (!isEditing) {
                 //This prevents the user from creating a completely new budget when trying to
                 //edit a newly created budget from the same form

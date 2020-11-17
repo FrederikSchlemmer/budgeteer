@@ -9,6 +9,7 @@ import org.apache.wicket.spring.injection.annot.SpringBean;
 import org.apache.wicket.util.string.StringValue;
 import org.wickedsource.budgeteer.service.budget.BudgetService;
 import org.wickedsource.budgeteer.service.budget.EditBudgetData;
+import org.wickedsource.budgeteer.web.BudgeteerSession;
 import org.wickedsource.budgeteer.web.Mount;
 import org.wickedsource.budgeteer.web.pages.base.dialogpage.DialogPageWithBacklink;
 import org.wickedsource.budgeteer.web.pages.budgets.edit.form.EditBudgetForm;
@@ -24,6 +25,16 @@ public class EditBudgetPage extends DialogPageWithBacklink {
     private BudgetService service;
 
     private final boolean isEditing;
+
+    /**
+     * Use this constructor to create a page with a form to create a new budget.
+     */
+    public EditBudgetPage(Class<? extends WebPage> backlinkPage, PageParameters backlinkParameters, EditBudgetData prefilledBudgetData) {
+        super(backlinkPage, backlinkParameters);
+        isEditing = false;
+        Form<EditBudgetData> form = new EditBudgetForm("form", model(from(prefilledBudgetData)), false);
+        addComponents(form);
+    }
 
     /**
      * Use this constructor to create a page with a form to create a new budget.
