@@ -1,10 +1,12 @@
 package org.wickedsource.budgeteer.web.components.fileUpload;
 
 import lombok.Data;
+import lombok.experimental.Accessors;
 
 import java.io.Serializable;
 
 @Data
+@Accessors(chain = true)
 public class FileUploadModel implements Serializable{
     private String fileName;
     private byte[] file;

@@ -2,6 +2,7 @@ package org.wickedsource.budgeteer.service.record;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 import org.joda.money.Money;
 import org.wickedsource.budgeteer.MoneyUtil;
 
@@ -11,6 +12,7 @@ import java.util.Locale;
 
 @Data
 @NoArgsConstructor
+@Accessors(chain = true)
 public class AggregatedRecord {
     private String aggregationPeriodTitle;
     private Date aggregationPeriodStart;

@@ -3,6 +3,7 @@ package org.wickedsource.budgeteer.persistence.contract;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 import org.wickedsource.budgeteer.persistence.project.ProjectContractField;
 
 import javax.persistence.*;
@@ -11,6 +12,7 @@ import java.io.Serializable;
 @Data
 @Entity
 @NoArgsConstructor
+@Accessors(chain = true)
 @Table(name="CONTRACT_FIELD")
 public class ContractFieldEntity implements Serializable{
 

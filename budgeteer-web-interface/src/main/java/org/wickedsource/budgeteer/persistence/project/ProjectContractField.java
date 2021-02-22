@@ -3,6 +3,7 @@ package org.wickedsource.budgeteer.persistence.project;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -13,6 +14,7 @@ import java.io.Serializable;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@Accessors(chain = true)
 @Entity
 @Table(name="PROJECT_CONTRACT_FIELD", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"FIELD_NAME", "PROJECT_ID"})

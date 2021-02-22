@@ -1,6 +1,7 @@
 package org.wickedsource.budgeteer.persistence.project;
 
 import lombok.Data;
+import lombok.experimental.Accessors;
 import org.wickedsource.budgeteer.persistence.user.UserEntity;
 
 import javax.persistence.*;
@@ -16,6 +17,7 @@ import java.util.Set;
                 @UniqueConstraint(name = "UNIQUE_PROJECT_NAME", columnNames = {"NAME"})
         })
 @Data
+@Accessors(chain = true)
 public class ProjectEntity implements Serializable {
 
     @Id

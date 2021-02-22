@@ -1,6 +1,7 @@
 package org.wickedsource.budgeteer.persistence.invoice;
 
 import lombok.Data;
+import lombok.experimental.Accessors;
 import org.wickedsource.budgeteer.persistence.contract.ContractInvoiceField;
 
 import javax.persistence.*;
@@ -9,6 +10,7 @@ import java.io.Serializable;
 @Data
 @Entity
 @Table(name="INVOICE_FIELD")
+@Accessors(chain = true)
 public class InvoiceFieldEntity implements Serializable {
 
     @Id

@@ -1,43 +1,53 @@
 package org.wickedsource.budgeteer.service.imports;
 
-import org.junit.jupiter.api.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.wickedsource.budgeteer.persistence.imports.ImportEntity;
 import org.wickedsource.budgeteer.persistence.imports.ImportRepository;
+import org.wickedsource.budgeteer.persistence.record.PlanRecordRepository;
 import org.wickedsource.budgeteer.persistence.record.WorkRecordRepository;
-import org.wickedsource.budgeteer.service.ServiceTestTemplate;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
 import static org.mockito.Mockito.*;
 
-class ImportServiceTest extends ServiceTestTemplate {
+@ExtendWith(MockitoExtension.class)
+class ImportServiceTest {
 
-    @Autowired
-    private ImportRepository importRepository;
-
-    @Autowired
-    private WorkRecordRepository workRecordRepository;
-
-    @Autowired
+    @InjectMocks
     private ImportService importService;
+    @Mock
+    private ImportRepository importRepository;
+    @Mock
+    private WorkRecordRepository workRecordRepository;
+    @Mock
+    private PlanRecordRepository planRecordRepository;
 
     @Test
-    void testLoadImports() throws Exception {
-        when(importRepository.findByProjectId(1L)).thenReturn(Arrays.asList(createImportEntity()));
+    void testLoadImports() {
+        when(importRepository.findByProjectId(1L)).thenReturn(Collections.singletonList(createImportEntity()));
+
         List<Import> imports = importService.loadImports(1L);
-        Assertions.assertEquals(1, imports.size());
-        Assertions.assertEquals("TestImport", imports.get(0).getImportType());
+
+        Assertions.assertThat(imports)
+                .hasSize(1)
+                .extracting(Import::getImportType)
+                .containsExactly("TestImport");
     }
 
     @Test
-    void testDeleteImport() throws Exception {
+    void testDeleteImport() {
         importService.deleteImport(1L);
+
         verify(importRepository, times(1)).deleteById(1L);
         verify(workRecordRepository, times(1)).deleteByImport(1L);
+        verify(planRecordRepository, times(1)).deleteByImport(1L);
     }
 
     private ImportEntity createImportEntity() {

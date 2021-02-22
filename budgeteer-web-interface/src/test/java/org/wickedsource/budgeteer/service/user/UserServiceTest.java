@@ -1,202 +1,242 @@
 package org.wickedsource.budgeteer.service.user;
 
-import org.junit.jupiter.api.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.context.TestPropertySource;
 import org.wickedsource.budgeteer.persistence.project.ProjectEntity;
 import org.wickedsource.budgeteer.persistence.project.ProjectRepository;
 import org.wickedsource.budgeteer.persistence.user.*;
-import org.wickedsource.budgeteer.service.ServiceTestTemplate;
 import org.wickedsource.budgeteer.service.UnknownEntityException;
 
 import java.util.*;
 
 import static org.mockito.Mockito.*;
 
-@TestPropertySource(locations="classpath:application.properties")
+@ExtendWith(MockitoExtension.class)
+@TestPropertySource(locations = "classpath:application.properties")
 @EnableAutoConfiguration
-class UserServiceTest extends ServiceTestTemplate{
+class UserServiceTest {
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private ProjectRepository projectRepository;
-
-    @Autowired
-    private VerificationTokenRepository verificationTokenRepository;
-
-    @Autowired
-    private ForgotPasswordTokenRepository forgotPasswordTokenRepository;
-
-    @Autowired
+    @InjectMocks
     private UserService service;
-
-    @Autowired
+    @Mock
+    private UserRepository userRepository;
+    @Mock
+    private ProjectRepository projectRepository;
+    @Mock
+    private VerificationTokenRepository verificationTokenRepository;
+    @Mock
+    private ForgotPasswordTokenRepository forgotPasswordTokenRepository;
+    @Mock
     private PasswordHasher passwordHasher;
-
+    @Mock
+    private UserMapper mapper;
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @Test
-    void testRegisterUser() throws Exception{
+    void testRegisterUser() throws Exception {
         service.registerUser("User", "", "Password");
         verify(userRepository, times(1)).save(any(UserEntity.class));
     }
 
     @Test
     void testDuplicateUsernameDuringRegistration() {
-        Assertions.assertThrows(UsernameAlreadyInUseException.class, () -> {
-            when(userRepository.findByName("User")).thenReturn(null, new UserEntity());
+        when(userRepository.findByName("User")).thenReturn(null, new UserEntity());
+        Assertions.assertThatThrownBy(() -> {
             service.registerUser("User", "", "Password");
             service.registerUser("User", "", "Password");
-        });
+        }).isInstanceOf(UsernameAlreadyInUseException.class);
     }
 
     @Test
     void testLoginSuccess() throws Exception {
-        when(userRepository.findByNameOrMailAndPassword("user", passwordHasher.hash("password"))).thenReturn(createUserEntity());
+        when(passwordHasher.hash("password")).thenReturn("password");
+        when(userRepository.findByNameOrMailAndPassword("user", "password")).thenReturn(createUserEntity());
+        when(mapper.map(any(UserEntity.class))).thenCallRealMethod();
+
         User user = service.login("user", "password");
-        Assertions.assertNotNull(user);
+
+        Assertions.assertThat(user)
+                .isNotNull();
     }
 
     @Test
     void testLoginFail() {
-        Assertions.assertThrows(InvalidLoginCredentialsException.class, () -> {
-            when(userRepository.findByNameAndPassword("user", passwordHasher.hash("password"))).thenReturn(null);
-            service.login("user", "password");
-        });
+        Assertions.assertThatThrownBy(() -> service.login("user", "password"))
+                .isInstanceOf(InvalidLoginCredentialsException.class);
     }
 
     @Test
     void testAddUserToProjectSuccess() {
-        when(userRepository.findById(1L)).thenReturn(createUserEntityOptional());
-        when(projectRepository.findById(1L)).thenReturn(Optional.of(createProjectEntity()));
+        Optional<UserEntity> userEntityOptional = createUserEntityOptional();
+        Optional<ProjectEntity> projectEntityOptional = Optional.of(createProjectEntity());
+        when(userRepository.findById(1L)).thenReturn(userEntityOptional);
+        when(projectRepository.findById(1L)).thenReturn(projectEntityOptional);
+
         service.addUserToProject(1L, 1L);
-        // assertion not possible when mocking repository
+
+        Assertions.assertThat(userEntityOptional.get().getAuthorizedProjects())
+                .isNotEmpty()
+                .contains(projectEntityOptional.get());
+        Assertions.assertThat(projectEntityOptional.get().getAuthorizedUsers())
+                .isNotEmpty()
+                .contains(userEntityOptional.get());
     }
 
     @Test
     void testAddUserToProjectFailProjectNotFound() {
-        Assertions.assertThrows(UnknownEntityException.class, () -> {
-            when(userRepository.findById(1L)).thenReturn(createUserEntityOptional());
-            service.addUserToProject(1L, 1L);
-        });
+        Assertions.assertThatThrownBy(() -> service.addUserToProject(1L, 1L))
+                .isInstanceOf(UnknownEntityException.class)
+                .hasMessage("Entity of type class org.wickedsource.budgeteer.persistence.project.ProjectEntity with id 1 does not exist!");
     }
 
     @Test
     void testAddUserToProjectFailUserNotFound() {
-        Assertions.assertThrows(UnknownEntityException.class, () -> {
-            when(projectRepository.findById(1L)).thenReturn(Optional.of(createProjectEntity()));
+        Assertions.assertThatThrownBy(() -> {
+            when(projectRepository.findById(anyLong())).thenReturn(Optional.of(createProjectEntity()));
             service.addUserToProject(1L, 1L);
-        });
+        }).isInstanceOf(UnknownEntityException.class)
+                .hasMessage("Entity of type class org.wickedsource.budgeteer.persistence.user.UserEntity with id 1 does not exist!");
     }
 
     @Test
     void testRemoveUserFromProjectSuccess() {
-        when(userRepository.findById(1L)).thenReturn(createUserEntityOptional());
-        when(projectRepository.findById(1L)).thenReturn(Optional.of(createProjectEntity()));
+        Optional<UserEntity> userEntityOptional = createUserEntityOptional();
+        Optional<ProjectEntity> projectEntityOptional = Optional.of(createProjectEntity());
+        when(userRepository.findById(1L)).thenReturn(userEntityOptional);
+        when(projectRepository.findById(1L)).thenReturn(projectEntityOptional);
+
         service.removeUserFromProject(1L, 1L);
-        // assertion not possible when mocking repository
+
+        Assertions.assertThat(userEntityOptional.get().getAuthorizedProjects())
+                .isEmpty();
+        Assertions.assertThat(projectEntityOptional.get().getAuthorizedUsers())
+                .isEmpty();
     }
 
     @Test
     void testRemoveUserFromProjectFailProjectNotFound() {
-        Assertions.assertThrows(UnknownEntityException.class, () -> {
-            when(userRepository.findById(1L)).thenReturn(createUserEntityOptional());
-            service.removeUserFromProject(1L, 1L);
-        });
+        Assertions.assertThatThrownBy(() -> service.removeUserFromProject(1L, 1L))
+                .isInstanceOf(UnknownEntityException.class)
+                .hasMessage("Entity of type class org.wickedsource.budgeteer.persistence.project.ProjectEntity with id 1 does not exist!");
     }
 
     @Test
     void testRemoveUserFromProjectFailUserNotFound() {
-        Assertions.assertThrows(UnknownEntityException.class, () -> {
-            when(projectRepository.findById(1L)).thenReturn(Optional.of(createProjectEntity()));
+        Assertions.assertThatThrownBy(() -> {
+            when(projectRepository.findById(anyLong())).thenReturn(Optional.of(createProjectEntity()));
             service.removeUserFromProject(1L, 1L);
-        });
+        }).isInstanceOf(UnknownEntityException.class)
+                .hasMessage("Entity of type class org.wickedsource.budgeteer.persistence.user.UserEntity with id 1 does not exist!");
     }
 
     @Test
     void testGetUsersNotInProject() {
         when(userRepository.findNotInProject(1L)).thenReturn(Arrays.asList(createUserEntity()));
+        when(mapper.map(Arrays.asList(createUserEntity()))).thenCallRealMethod();
+        when(mapper.map(any(UserEntity.class))).thenCallRealMethod();
+
         List<User> users = service.getUsersNotInProject(1L);
-        Assertions.assertEquals(1, users.size());
-        Assertions.assertEquals("user", users.get(0).getName());
+
+        Assertions.assertThat(users)
+                .hasSize(1)
+                .extracting(User::getName)
+                .containsExactly("user");
     }
 
     @Test
     void testGetUsersInProject() {
         when(userRepository.findInProject(1L)).thenReturn(Arrays.asList(createUserEntity()));
+        when(mapper.map(Arrays.asList(createUserEntity()))).thenCallRealMethod();
+        when(mapper.map(any(UserEntity.class))).thenCallRealMethod();
+
         List<User> users = service.getUsersInProject(1L);
-        Assertions.assertEquals(1, users.size());
-        Assertions.assertEquals("user", users.get(0).getName());
+
+        Assertions.assertThat(users)
+                .hasSize(1)
+                .extracting(User::getName)
+                .containsExactly("user");
     }
 
     @Test
     void testCheckPassword() {
+        when(passwordHasher.hash("password")).thenReturn("password");
+        when(passwordHasher.hash("PASSWORD")).thenReturn("PASSWORD");
         when(userRepository.findById(1L)).thenReturn(createUserEntityOptional());
-        Assertions.assertTrue(service.checkPassword(1L, "password"));
-        Assertions.assertFalse(service.checkPassword(1L, "PASSWORD"));
+
+        Assertions.assertThat(service.checkPassword(1L, "password"))
+                .isTrue();
+        Assertions.assertThat(service.checkPassword(1L, "PASSWORD"))
+                .isFalse();
     }
 
     @Test
     void testResetPasswordMailNotFoundException() {
-        Assertions.assertThrows(MailNotFoundException.class, () -> {
-            when(userRepository.findByMail("nonuser@budgeteer.local")).thenReturn(createUserEntity());
-            service.resetPassword("user@budgeteer.local");
-        });
+        when(userRepository.findByMail(any())).thenReturn(null);
+
+        Assertions.assertThatThrownBy(() -> service.resetPassword("user@budgeteer.local"))
+                .isInstanceOf(MailNotFoundException.class);
     }
 
     @Test
     void testResetPasswordMailNotVerifiedException() {
-        Assertions.assertThrows(MailNotVerifiedException.class, () -> {
-            UserEntity user = createUserEntity();
-            user.setMailVerified(false);
-            when(userRepository.findByMail("user@budgeteer.local")).thenReturn(user);
-            service.resetPassword("user@budgeteer.local");
-        });
+        UserEntity user = createUserEntity();
+        user.setMailVerified(false);
+        when(userRepository.findByMail("user@budgeteer.local")).thenReturn(user);
+
+        Assertions.assertThatThrownBy(() -> service.resetPassword("user@budgeteer.local"))
+                .isInstanceOf(MailNotVerifiedException.class);
     }
 
     @Test
     void testLoadUserToEdit() {
         Optional<UserEntity> userMockOptional = createUserEntityOptional();
-        when(userRepository.findById(1L)).thenReturn(userMockOptional);
-        EditUserData user = service.loadUserToEdit(1L);
         UserEntity userMock = userMockOptional.get();
-        Assertions.assertEquals(userMock.getId(), user.getId());
-        Assertions.assertEquals(userMock.getMail(), user.getMail());
-        Assertions.assertEquals(userMock.getName(), user.getName());
-        Assertions.assertEquals(userMock.getPassword(), user.getPassword());
+        when(userRepository.findById(1L)).thenReturn(userMockOptional);
+
+        EditUserData user = service.loadUserToEdit(1L);
+
+        Assertions.assertThat(user.getId()).isEqualTo(userMock.getId());
+        Assertions.assertThat(user.getMail()).isEqualTo(userMock.getMail());
+        Assertions.assertThat(user.getName()).isEqualTo(userMock.getName());
+        Assertions.assertThat(user.getPassword()).isEqualTo(userMock.getPassword());
     }
 
     @Test
     void testSaveUserUsernameAlreadyInUseException() {
-        Assertions.assertThrows(UsernameAlreadyInUseException.class, () -> {
-            Optional<UserEntity> user = createUserEntityOptional();
-            UserEntity user2 = createUserEntity();
-            user2.setId(2L);
-            user2.setName("user2");
-            when(userRepository.findById(1L)).thenReturn(user);
-            EditUserData editUserData = service.loadUserToEdit(1L);
-            when(userRepository.findByName("user2")).thenReturn(user2);
-            editUserData.setName("user2");
-            service.saveUser(editUserData, false);
-        });
+        Optional<UserEntity> user = createUserEntityOptional();
+        UserEntity user2 = createUserEntity();
+        user2.setId(2L);
+        user2.setName("user2");
+        when(userRepository.findById(1L)).thenReturn(user);
+        EditUserData editUserData = service.loadUserToEdit(1L);
+        when(userRepository.findByName("user2")).thenReturn(user2);
+        editUserData.setName("user2");
+
+        Assertions.assertThatThrownBy(() -> service.saveUser(editUserData, false))
+                .isInstanceOf(UsernameAlreadyInUseException.class);
     }
 
     @Test
     void testSaveUserMailAlreadyInUseException() {
-        Assertions.assertThrows(MailAlreadyInUseException.class, () -> {
-            Optional<UserEntity> user = createUserEntityOptional();
-            UserEntity user2 = createUserEntity();
-            user2.setId(2L);
-            user2.setMail("user2@budgeteer.local");
-            when(userRepository.findById(1L)).thenReturn(user);
-            EditUserData editUserData = service.loadUserToEdit(1L);
-            when(userRepository.findByMail("user2@budgeteer.local")).thenReturn(user2);
-            editUserData.setMail("user2@budgeteer.local");
-            service.saveUser(editUserData, false);
-        });
+        Optional<UserEntity> user = createUserEntityOptional();
+        UserEntity user2 = createUserEntity();
+        user2.setId(2L);
+        user2.setMail("user2@budgeteer.local");
+        when(userRepository.findById(1L)).thenReturn(user);
+        EditUserData editUserData = service.loadUserToEdit(1L);
+        when(userRepository.findByMail("user2@budgeteer.local")).thenReturn(user2);
+        editUserData.setMail("user2@budgeteer.local");
+
+        Assertions.assertThatThrownBy(() -> service.saveUser(editUserData, false))
+                .isInstanceOf(MailAlreadyInUseException.class);
     }
 
     @Test
@@ -205,74 +245,87 @@ class UserServiceTest extends ServiceTestTemplate{
         when(userRepository.findById(1L)).thenReturn(user);
         EditUserData editUserData = service.loadUserToEdit(1L);
         editUserData.setName("user2");
+
         service.saveUser(editUserData, false);
-        when(userRepository.findById(1L)).thenReturn(user);
-        Assertions.assertEquals(editUserData.getName(), user.get().getName());
+
+        Assertions.assertThat(editUserData.getName())
+                .isEqualTo(user.get().getName());
     }
 
     @Test
     void testCreateVerificationTokenForUser() {
         UserEntity user = createUserEntity();
         String uuid = UUID.randomUUID().toString();
+
         VerificationToken verificationToken = service.createVerificationTokenForUser(user, uuid);
+
         verify(verificationTokenRepository, times(1)).save(verificationToken);
     }
 
     @Test
     void testValidateVerificationTokenInvalid() {
         String uuid = UUID.randomUUID().toString();
-        Assertions.assertEquals(-1, service.validateVerificationToken(uuid));
+
+        Assertions.assertThat(service.validateVerificationToken(uuid))
+                .isEqualTo(-1);
     }
 
     @Test
     void testValidateVerificationTokenExpired() {
-        UserEntity user = createUserEntity();
         String uuid = UUID.randomUUID().toString();
-        VerificationToken verificationToken = new VerificationToken(user, uuid);
+        VerificationToken verificationToken = new VerificationToken(createUserEntity(), uuid);
         Date date = new Date();
         date.setTime(verificationToken.getExpiryDate().getTime() - 90000000); // 25 hours
         verificationToken.setExpiryDate(date);
         when(verificationTokenRepository.findByToken(uuid)).thenReturn(verificationToken);
-        Assertions.assertEquals(-2, service.validateVerificationToken(uuid));
+
+        Assertions.assertThat(service.validateVerificationToken(uuid))
+                .isEqualTo(-2);
     }
 
     @Test
     void testValidateVerificationTokenValid() {
-        UserEntity user = createUserEntity();
         String uuid = UUID.randomUUID().toString();
-        VerificationToken verificationToken = new VerificationToken(user, uuid);
+        VerificationToken verificationToken = new VerificationToken(createUserEntity(), uuid);
         when(verificationTokenRepository.findByToken(uuid)).thenReturn(verificationToken);
-        Assertions.assertEquals(0, service.validateVerificationToken(uuid));
+
+        Assertions.assertThat(service.validateVerificationToken(uuid))
+                .isZero();
     }
 
     @Test
     void getUserByMailMailNotFoundException() {
-        Assertions.assertThrows(MailNotFoundException.class, () -> {
-            when(userRepository.findByMail("nonuser@budgeteer.local")).thenReturn(createUserEntity());
+        Assertions.assertThatThrownBy(() -> {
+            when(userRepository.findByMail("user@budgeteer.local")).thenReturn(null);
             service.getUserByMail("user@budgeteer.local");
-        });
+        }).isInstanceOf(MailNotFoundException.class);
     }
 
     @Test
     void getUserByMail() throws MailNotFoundException {
         when(userRepository.findByMail("user@budgeteer.local")).thenReturn(createUserEntity());
+
         UserEntity user = service.getUserByMail("user@budgeteer.local");
-        Assertions.assertNotNull(user);
+
+        Assertions.assertThat(user)
+                .isNotNull();
     }
 
     @Test
     void getUserByIdUserIdNotFoundException() {
-        Assertions.assertThrows(UserIdNotFoundException.class, () -> {
-            when(userRepository.findById(2L)).thenReturn(createUserEntityOptional());
+        Assertions.assertThatThrownBy(() -> {
+            when(userRepository.findById(1L)).thenReturn(Optional.empty());
             service.getUserById(1L);
-        });
+        }).isInstanceOf(UserIdNotFoundException.class);
     }
 
     @Test
     void getUserById() throws UserIdNotFoundException {
         when(userRepository.findById(1L)).thenReturn(createUserEntityOptional());
         UserEntity user = service.getUserById(1L);
-        Assertions.assertNotNull(user);
+
+        Assertions.assertThat(user)
+                .isNotNull();
     }
 
     @Test
@@ -282,6 +335,7 @@ class UserServiceTest extends ServiceTestTemplate{
         ForgotPasswordToken oldForgotPasswordToken = new ForgotPasswordToken(user, uuid);
         when(forgotPasswordTokenRepository.findByUser(user)).thenReturn(oldForgotPasswordToken);
         ForgotPasswordToken newForgotPasswordToken = service.createForgotPasswordTokenForUser(user, uuid);
+
         verify(forgotPasswordTokenRepository, times(1)).delete(oldForgotPasswordToken);
         verify(forgotPasswordTokenRepository, times(1)).save(newForgotPasswordToken);
     }
@@ -289,7 +343,9 @@ class UserServiceTest extends ServiceTestTemplate{
     @Test
     void testValidateForgotPasswordTokenInvalid() {
         String uuid = UUID.randomUUID().toString();
-        Assertions.assertEquals(-1, service.validateForgotPasswordToken(uuid));
+
+        Assertions.assertThat(service.validateForgotPasswordToken(uuid))
+                .isEqualTo(-1);
     }
 
     @Test
@@ -301,7 +357,9 @@ class UserServiceTest extends ServiceTestTemplate{
         date.setTime(forgotPasswordToken.getExpiryDate().getTime() - 90000000); // 25 hours
         forgotPasswordToken.setExpiryDate(date);
         when(forgotPasswordTokenRepository.findByToken(uuid)).thenReturn(forgotPasswordToken);
-        Assertions.assertEquals(-2, service.validateForgotPasswordToken(uuid));
+
+        Assertions.assertThat(service.validateForgotPasswordToken(uuid))
+                .isEqualTo(-2);
     }
 
     @Test
@@ -310,33 +368,42 @@ class UserServiceTest extends ServiceTestTemplate{
         String uuid = UUID.randomUUID().toString();
         ForgotPasswordToken forgotPasswordToken = new ForgotPasswordToken(user, uuid);
         when(forgotPasswordTokenRepository.findByToken(uuid)).thenReturn(forgotPasswordToken);
-        Assertions.assertEquals(0, service.validateForgotPasswordToken(uuid));
+
+        Assertions.assertThat(service.validateForgotPasswordToken(uuid))
+                .isZero();
     }
 
     @Test
     void testGetUserByForgotPasswordTokenNotNull() {
-        UserEntity user = createUserEntity();
         String uuid = UUID.randomUUID().toString();
-        ForgotPasswordToken forgotPasswordToken = new ForgotPasswordToken(user, uuid);
+        ForgotPasswordToken forgotPasswordToken = new ForgotPasswordToken(createUserEntity(), uuid);
         when(forgotPasswordTokenRepository.findByToken(uuid)).thenReturn(forgotPasswordToken);
+
         UserEntity userResult = service.getUserByForgotPasswordToken(uuid);
-        Assertions.assertNotNull(userResult);
+
+        Assertions.assertThat(userResult)
+                .isNotNull();
     }
 
     @Test
     void testGetUserByForgotPasswordTokenNull() {
         String uuid = UUID.randomUUID().toString();
+        when(forgotPasswordTokenRepository.findByToken(uuid)).thenReturn(null);
+
         UserEntity userResult = service.getUserByForgotPasswordToken(uuid);
-        Assertions.assertNull(userResult);
+
+        Assertions.assertThat(userResult)
+                .isNull();
     }
 
     @Test
     void testDeleteForgotPasswordToken() {
-        UserEntity user = createUserEntity();
         String uuid = UUID.randomUUID().toString();
-        ForgotPasswordToken forgotPasswordToken = new ForgotPasswordToken(user, uuid);
+        ForgotPasswordToken forgotPasswordToken = new ForgotPasswordToken(createUserEntity(), uuid);
         when(forgotPasswordTokenRepository.findByToken(uuid)).thenReturn(forgotPasswordToken);
+
         service.deleteForgotPasswordToken(uuid);
+
         verify(forgotPasswordTokenRepository, times(1)).delete(forgotPasswordToken);
     }
 
@@ -346,8 +413,8 @@ class UserServiceTest extends ServiceTestTemplate{
         user.setName("user");
         user.setMail("user@budgeteer.local");
         user.setMailVerified(true);
-        user.setPassword(passwordHasher.hash("password"));
-        user.setAuthorizedProjects(new ArrayList<ProjectEntity>());
+        user.setPassword("password");
+        user.setAuthorizedProjects(new ArrayList<>());
         return user;
     }
 
@@ -357,8 +424,8 @@ class UserServiceTest extends ServiceTestTemplate{
         user.setName("user");
         user.setMail("user@budgeteer.local");
         user.setMailVerified(true);
-        user.setPassword(passwordHasher.hash("password"));
-        user.setAuthorizedProjects(new ArrayList<ProjectEntity>());
+        user.setPassword("password");
+        user.setAuthorizedProjects(new ArrayList<>());
         return Optional.of(user);
     }
 
@@ -366,7 +433,7 @@ class UserServiceTest extends ServiceTestTemplate{
         ProjectEntity project = new ProjectEntity();
         project.setId(1L);
         project.setName("name");
-        project.setAuthorizedUsers(new ArrayList<UserEntity>());
+        project.setAuthorizedUsers(new ArrayList<>());
         return project;
     }
 }

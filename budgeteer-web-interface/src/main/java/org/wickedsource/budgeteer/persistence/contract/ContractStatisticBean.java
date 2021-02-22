@@ -2,6 +2,7 @@ package org.wickedsource.budgeteer.persistence.contract;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.experimental.Accessors;
 
 import java.io.Serializable;
 

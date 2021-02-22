@@ -3,6 +3,7 @@ package org.wickedsource.budgeteer.persistence.invoice;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 import org.joda.money.Money;
 import org.wickedsource.budgeteer.persistence.contract.ContractEntity;
 
@@ -20,6 +21,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Accessors(chain = true)
 public class InvoiceEntity {
 
     @Id

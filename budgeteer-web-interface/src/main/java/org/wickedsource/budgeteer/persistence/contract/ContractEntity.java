@@ -1,6 +1,7 @@
 package org.wickedsource.budgeteer.persistence.contract;
 
 import lombok.Data;
+import lombok.experimental.Accessors;
 import org.joda.money.Money;
 import org.wickedsource.budgeteer.persistence.budget.BudgetEntity;
 import org.wickedsource.budgeteer.persistence.invoice.InvoiceEntity;
@@ -18,6 +19,7 @@ import java.util.Set;
 @Entity
 @Table(name="CONTRACT")
 @Data
+@Accessors(chain = true)
 public class ContractEntity implements Serializable {
 
     public enum ContractType{

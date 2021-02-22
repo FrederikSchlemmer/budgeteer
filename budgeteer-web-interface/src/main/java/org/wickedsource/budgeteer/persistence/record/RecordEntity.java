@@ -3,6 +3,7 @@ package org.wickedsource.budgeteer.persistence.record;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.Accessors;
 import org.joda.money.Money;
 import org.wickedsource.budgeteer.persistence.budget.BudgetEntity;
 import org.wickedsource.budgeteer.persistence.imports.ImportEntity;
@@ -13,7 +14,10 @@ import java.util.Calendar;
 import java.util.Date;
 
 @MappedSuperclass
-@Getter @Setter @NoArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@Accessors(chain = true)
 public abstract class RecordEntity {
 
     @Id
@@ -55,7 +59,7 @@ public abstract class RecordEntity {
     private ImportEntity importRecord;
 
 
-    public void setDate(Date date) {
+    public RecordEntity setDate(Date date) {
         Calendar c = Calendar.getInstance();
         c.setTime(date);
         this.date = date;
@@ -63,6 +67,7 @@ public abstract class RecordEntity {
         this.month = c.get(Calendar.MONTH);
         this.day = c.get(Calendar.DAY_OF_MONTH);
         this.week = c.get(Calendar.WEEK_OF_YEAR);
+        return this;
     }
 
     @Override

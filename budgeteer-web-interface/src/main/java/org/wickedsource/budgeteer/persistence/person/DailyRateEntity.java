@@ -1,6 +1,7 @@
 package org.wickedsource.budgeteer.persistence.person;
 
 import lombok.Data;
+import lombok.experimental.Accessors;
 import org.joda.money.Money;
 import org.wickedsource.budgeteer.persistence.budget.BudgetEntity;
 
@@ -10,6 +11,7 @@ import java.util.Date;
 @Entity
 @Table(name="DAILY_RATE")
 @Data
+@Accessors(chain = true)
 public class DailyRateEntity {
 
     @Id

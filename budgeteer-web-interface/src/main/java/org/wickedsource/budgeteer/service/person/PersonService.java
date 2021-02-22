@@ -94,6 +94,8 @@ public class PersonService {
             person.getRates().add(rate);
         }
 
+        System.out.println(person);
+
         return person;
     }
 

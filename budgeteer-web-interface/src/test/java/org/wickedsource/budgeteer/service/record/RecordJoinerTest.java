@@ -1,11 +1,13 @@
 package org.wickedsource.budgeteer.service.record;
 
-import org.junit.jupiter.api.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.wickedsource.budgeteer.MoneyUtil;
 import org.wickedsource.budgeteer.persistence.record.*;
-import org.wickedsource.budgeteer.service.ServiceTestTemplate;
 import org.wickedsource.budgeteer.service.statistics.MonthlyStats;
 
 import java.math.BigDecimal;
@@ -14,150 +16,173 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
-class RecordJoinerTest extends ServiceTestTemplate {
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class RecordJoinerTest {
+
+    @Mock
+    private RecordJoiner joiner;
 
     private DateFormat format = new SimpleDateFormat("dd.MM.yyyy");
 
-    @Autowired
-    private RecordJoiner joiner;
-
     @Test
     void testJoinWeekly() throws Exception {
+        when(joiner.joinWeekly(ArgumentMatchers.anyList(), ArgumentMatchers.anyList())).thenCallRealMethod();
+
         List<AggregatedRecord> records = joiner.joinWeekly(createWeeklyWorkRecords(), createWeeklyPlanRecords());
-        Assertions.assertEquals(3, records.size());
 
-        Assertions.assertEquals(format.parse("03.03.2014"), records.get(0).getAggregationPeriodStart());
-        Assertions.assertEquals(format.parse("09.03.2014"), records.get(0).getAggregationPeriodEnd());
-        Assertions.assertEquals("Week 2014-10", records.get(0).getAggregationPeriodTitle());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(50000), records.get(0).getBudgetBurned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(12300), records.get(0).getBudgetPlanned_net());
-        Assertions.assertEquals(5d, records.get(0).getHours(), 0.1d);
-
-        Assertions.assertEquals(format.parse("06.04.2015"), records.get(1).getAggregationPeriodStart());
-        Assertions.assertEquals(format.parse("12.04.2015"), records.get(1).getAggregationPeriodEnd());
-        Assertions.assertEquals("Week 2015-15", records.get(1).getAggregationPeriodTitle());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(50000), records.get(1).getBudgetBurned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(12300), records.get(1).getBudgetPlanned_net());
-        Assertions.assertEquals(5d, records.get(1).getHours(), 0.1d);
-
-        Assertions.assertEquals(format.parse("13.04.2015"), records.get(2).getAggregationPeriodStart());
-        Assertions.assertEquals(format.parse("19.04.2015"), records.get(2).getAggregationPeriodEnd());
-        Assertions.assertEquals("Week 2015-16", records.get(2).getAggregationPeriodTitle());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(60000), records.get(2).getBudgetBurned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(32100), records.get(2).getBudgetPlanned_net());
-        Assertions.assertEquals(6d, records.get(2).getHours(), 0.1d);
+        Assertions.assertThat(records)
+                .hasSize(3)
+                .containsExactly(new AggregatedRecord()
+                                .setAggregationPeriodStart(format.parse("03.03.2014"))
+                                .setAggregationPeriodEnd(format.parse("09.03.2014"))
+                                .setAggregationPeriodTitle("Week 2014-10")
+                                .setBudgetBurned_net(MoneyUtil.createMoneyFromCents(50000))
+                                .setBudgetPlanned_net(MoneyUtil.createMoneyFromCents(12300))
+                                .setHours(5d),
+                        new AggregatedRecord()
+                                .setAggregationPeriodStart(format.parse("06.04.2015"))
+                                .setAggregationPeriodEnd(format.parse("12.04.2015"))
+                                .setAggregationPeriodTitle("Week 2015-15")
+                                .setBudgetBurned_net(MoneyUtil.createMoneyFromCents(50000))
+                                .setBudgetPlanned_net(MoneyUtil.createMoneyFromCents(12300))
+                                .setHours(5d),
+                        new AggregatedRecord()
+                                .setAggregationPeriodStart(format.parse("13.04.2015"))
+                                .setAggregationPeriodEnd(format.parse("19.04.2015"))
+                                .setAggregationPeriodTitle("Week 2015-16")
+                                .setBudgetBurned_net(MoneyUtil.createMoneyFromCents(60000))
+                                .setBudgetPlanned_net(MoneyUtil.createMoneyFromCents(32100))
+                                .setHours(6d)
+                );
     }
 
     @Test
     void testJoinWeeklyWithTax() throws Exception {
+        when(joiner.joinWeeklyByMonthFraction(ArgumentMatchers.anyList(), ArgumentMatchers.anyList(), any())).thenCallRealMethod();
+
         List<AggregatedRecord> recordsWithTax = joiner.joinWeeklyByMonthFraction(createWeeklyWorkRecordsWithTax(), createWeeklyPlanRecordsWithTax(), createMonthlyStats());
-        Assertions.assertEquals(2, recordsWithTax.size());
 
-        Assertions.assertEquals(format.parse("26.03.2018"), recordsWithTax.get(0).getAggregationPeriodStart());
-        Assertions.assertEquals(format.parse("1.04.2018"), recordsWithTax.get(0).getAggregationPeriodEnd());
-        Assertions.assertEquals("Week 2018-13", recordsWithTax.get(0).getAggregationPeriodTitle());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(16250), recordsWithTax.get(0).getBudgetBurned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(18750), recordsWithTax.get(0).getBudgetPlanned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(17625), recordsWithTax.get(0).getBudgetBurned_gross());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(20313), recordsWithTax.get(0).getBudgetPlanned_gross());
-        Assertions.assertEquals(13d, recordsWithTax.get(0).getHours(), 0.1d);
-
-        Assertions.assertEquals(format.parse("02.04.2018"), recordsWithTax.get(1).getAggregationPeriodStart());
-        Assertions.assertEquals(format.parse("08.04.2018"), recordsWithTax.get(1).getAggregationPeriodEnd());
-        Assertions.assertEquals("Week 2018-14", recordsWithTax.get(1).getAggregationPeriodTitle());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(3750), recordsWithTax.get(1).getBudgetBurned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(5000), recordsWithTax.get(1).getBudgetPlanned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(4125), recordsWithTax.get(1).getBudgetBurned_gross());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(5500), recordsWithTax.get(1).getBudgetPlanned_gross());
-        Assertions.assertEquals(3d, recordsWithTax.get(1).getHours(), 0.1d);
+        Assertions.assertThat(recordsWithTax)
+                .hasSize(2)
+                .containsExactly(new AggregatedRecord()
+                                .setAggregationPeriodStart(format.parse("26.03.2018"))
+                                .setAggregationPeriodEnd(format.parse("1.04.2018"))
+                                .setAggregationPeriodTitle("Week 2018-13")
+                                .setBudgetBurned_net(MoneyUtil.createMoneyFromCents(16250))
+                                .setBudgetPlanned_net(MoneyUtil.createMoneyFromCents(18750))
+                                .setBudgetBurned_gross(MoneyUtil.createMoneyFromCents(17625))
+                                .setBudgetPlanned_gross(MoneyUtil.createMoneyFromCents(20313))
+                                .setHours(13d),
+                        new AggregatedRecord()
+                                .setAggregationPeriodStart(format.parse("02.04.2018"))
+                                .setAggregationPeriodEnd(format.parse("08.04.2018"))
+                                .setAggregationPeriodTitle("Week 2018-14")
+                                .setBudgetBurned_net(MoneyUtil.createMoneyFromCents(3750))
+                                .setBudgetPlanned_net(MoneyUtil.createMoneyFromCents(5000))
+                                .setBudgetBurned_gross(MoneyUtil.createMoneyFromCents(4125))
+                                .setBudgetPlanned_gross(MoneyUtil.createMoneyFromCents(5500))
+                                .setHours(3d)
+                );
     }
 
     @Test
     void testJoinMonthly() throws Exception {
+        when(joiner.joinMonthly(ArgumentMatchers.anyList(), ArgumentMatchers.anyList())).thenCallRealMethod();
+
         List<AggregatedRecord> records = joiner.joinMonthly(createMonthlyWorkRecords(), createMonthlyPlanRecords());
-        Assertions.assertEquals(3, records.size());
 
-        Assertions.assertEquals(format.parse("01.01.2014"), records.get(0).getAggregationPeriodStart());
-        Assertions.assertEquals(format.parse("31.01.2014"), records.get(0).getAggregationPeriodEnd());
-        Assertions.assertEquals("Month 2014-01", records.get(0).getAggregationPeriodTitle());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(50000), records.get(0).getBudgetBurned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(12300), records.get(0).getBudgetPlanned_net());
-        Assertions.assertEquals(5d, records.get(0).getHours(), 0.1d);
-
-        Assertions.assertEquals(format.parse("01.06.2015"), records.get(1).getAggregationPeriodStart());
-        Assertions.assertEquals(format.parse("30.06.2015"), records.get(1).getAggregationPeriodEnd());
-        Assertions.assertEquals("Month 2015-06", records.get(1).getAggregationPeriodTitle());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(50000), records.get(1).getBudgetBurned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(12300), records.get(1).getBudgetPlanned_net());
-        Assertions.assertEquals(5d, records.get(1).getHours(), 0.1d);
-
-        Assertions.assertEquals(format.parse("01.07.2015"), records.get(2).getAggregationPeriodStart());
-        Assertions.assertEquals(format.parse("31.07.2015"), records.get(2).getAggregationPeriodEnd());
-        Assertions.assertEquals("Month 2015-07", records.get(2).getAggregationPeriodTitle());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(60000), records.get(2).getBudgetBurned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(32100), records.get(2).getBudgetPlanned_net());
-        Assertions.assertEquals(6d, records.get(2).getHours(), 0.1d);
-
+        Assertions.assertThat(records)
+                .hasSize(3)
+                .containsExactly(new AggregatedRecord()
+                                .setAggregationPeriodStart(format.parse("01.01.2014"))
+                                .setAggregationPeriodEnd(format.parse("31.01.2014"))
+                                .setAggregationPeriodTitle("Month 2014-01")
+                                .setBudgetBurned_net(MoneyUtil.createMoneyFromCents(50000))
+                                .setBudgetPlanned_net(MoneyUtil.createMoneyFromCents(12300))
+                                .setHours(5d),
+                        new AggregatedRecord()
+                                .setAggregationPeriodStart(format.parse("01.06.2015"))
+                                .setAggregationPeriodEnd(format.parse("30.06.2015"))
+                                .setAggregationPeriodTitle("Month 2015-06")
+                                .setBudgetBurned_net(MoneyUtil.createMoneyFromCents(50000))
+                                .setBudgetPlanned_net(MoneyUtil.createMoneyFromCents(12300))
+                                .setHours(5d),
+                        new AggregatedRecord()
+                                .setAggregationPeriodStart(format.parse("01.07.2015"))
+                                .setAggregationPeriodEnd(format.parse("31.07.2015"))
+                                .setAggregationPeriodTitle("Month 2015-07")
+                                .setBudgetBurned_net(MoneyUtil.createMoneyFromCents(60000))
+                                .setBudgetPlanned_net(MoneyUtil.createMoneyFromCents(32100))
+                                .setHours(6d)
+                );
     }
 
     @Test
     void testJoinMonthlyWithTax() throws Exception {
+        when(joiner.joinMonthlyWithTax(ArgumentMatchers.anyList(), ArgumentMatchers.anyList())).thenCallRealMethod();
+
         List<AggregatedRecord> records = joiner.joinMonthlyWithTax(createMonthlyWorkRecordsWithTax(), createMonthlyPlanRecordsWithTax());
-        Assertions.assertEquals(6, records.size());
 
-        Assertions.assertEquals(format.parse("01.01.2014"), records.get(0).getAggregationPeriodStart());
-        Assertions.assertEquals(format.parse("31.01.2014"), records.get(0).getAggregationPeriodEnd());
-        Assertions.assertEquals("Month 2014-01", records.get(0).getAggregationPeriodTitle());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000), records.get(0).getBudgetBurned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(12300), records.get(0).getBudgetPlanned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(107500), records.get(0).getBudgetBurned_gross());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(13530), records.get(0).getBudgetPlanned_gross());
-        Assertions.assertEquals(10d, records.get(0).getHours(), 0.1d);
-
-        Assertions.assertEquals(format.parse("01.06.2015"), records.get(1).getAggregationPeriodStart());
-        Assertions.assertEquals(format.parse("30.06.2015"), records.get(1).getAggregationPeriodEnd());
-        Assertions.assertEquals("Month 2015-06", records.get(1).getAggregationPeriodTitle());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(50000), records.get(1).getBudgetBurned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(12300), records.get(1).getBudgetPlanned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(55000), records.get(1).getBudgetBurned_gross());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(13530), records.get(1).getBudgetPlanned_gross());
-        Assertions.assertEquals(5d, records.get(1).getHours(), 0.1d);
-
-        Assertions.assertEquals(format.parse("01.07.2015"), records.get(2).getAggregationPeriodStart());
-        Assertions.assertEquals(format.parse("31.07.2015"), records.get(2).getAggregationPeriodEnd());
-        Assertions.assertEquals("Month 2015-07", records.get(2).getAggregationPeriodTitle());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(60000), records.get(2).getBudgetBurned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(20000), records.get(2).getBudgetPlanned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(66000), records.get(2).getBudgetBurned_gross());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(21500), records.get(2).getBudgetPlanned_gross());
-        Assertions.assertEquals(6d, records.get(2).getHours(), 0.1d);
-
-        Assertions.assertEquals(format.parse("01.01.2016"), records.get(3).getAggregationPeriodStart());
-        Assertions.assertEquals(format.parse("31.01.2016"), records.get(3).getAggregationPeriodEnd());
-        Assertions.assertEquals("Month 2016-01", records.get(3).getAggregationPeriodTitle());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(143750), records.get(3).getBudgetBurned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(156250), records.get(3).getBudgetPlanned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(152219), records.get(3).getBudgetBurned_gross());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(166157), records.get(3).getBudgetPlanned_gross());
-        Assertions.assertEquals(115d, records.get(3).getHours(), 0.1d);
-
-        Assertions.assertEquals(format.parse("01.06.2016"), records.get(4).getAggregationPeriodStart());
-        Assertions.assertEquals(format.parse("30.06.2016"), records.get(4).getAggregationPeriodEnd());
-        Assertions.assertEquals("Month 2016-06", records.get(4).getAggregationPeriodTitle());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(201250), records.get(4).getBudgetBurned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(208125), records.get(4).getBudgetPlanned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(221375), records.get(4).getBudgetBurned_gross());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(228938), records.get(4).getBudgetPlanned_gross());
-        Assertions.assertEquals(161d, records.get(4).getHours(), 0.1d);
-
-        Assertions.assertEquals(format.parse("01.07.2016"), records.get(5).getAggregationPeriodStart());
-        Assertions.assertEquals(format.parse("31.07.2016"), records.get(5).getAggregationPeriodEnd());
-        Assertions.assertEquals("Month 2016-07", records.get(5).getAggregationPeriodTitle());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000), records.get(5).getBudgetBurned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(208125), records.get(5).getBudgetPlanned_net());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(220000), records.get(5).getBudgetBurned_gross());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(228938), records.get(5).getBudgetPlanned_gross());
-        Assertions.assertEquals(160d, records.get(5).getHours(), 0.1d);
+        Assertions.assertThat(records)
+                .hasSize(6)
+                .containsExactly(new AggregatedRecord()
+                                .setAggregationPeriodStart(format.parse("01.01.2014"))
+                                .setAggregationPeriodEnd(format.parse("31.01.2014"))
+                                .setAggregationPeriodTitle("Month 2014-01")
+                                .setBudgetBurned_net(MoneyUtil.createMoneyFromCents(100000))
+                                .setBudgetPlanned_net(MoneyUtil.createMoneyFromCents(12300))
+                                .setBudgetBurned_gross(MoneyUtil.createMoneyFromCents(107500))
+                                .setBudgetPlanned_gross(MoneyUtil.createMoneyFromCents(13530))
+                                .setHours(10d),
+                        new AggregatedRecord()
+                                .setAggregationPeriodStart(format.parse("01.06.2015"))
+                                .setAggregationPeriodEnd(format.parse("30.06.2015"))
+                                .setAggregationPeriodTitle("Month 2015-06")
+                                .setBudgetBurned_net(MoneyUtil.createMoneyFromCents(50000))
+                                .setBudgetPlanned_net(MoneyUtil.createMoneyFromCents(12300))
+                                .setBudgetBurned_gross(MoneyUtil.createMoneyFromCents(55000))
+                                .setBudgetPlanned_gross(MoneyUtil.createMoneyFromCents(13530))
+                                .setHours(5d),
+                        new AggregatedRecord()
+                                .setAggregationPeriodStart(format.parse("01.07.2015"))
+                                .setAggregationPeriodEnd(format.parse("31.07.2015"))
+                                .setAggregationPeriodTitle("Month 2015-07")
+                                .setBudgetBurned_net(MoneyUtil.createMoneyFromCents(60000))
+                                .setBudgetPlanned_net(MoneyUtil.createMoneyFromCents(20000))
+                                .setBudgetBurned_gross(MoneyUtil.createMoneyFromCents(66000))
+                                .setBudgetPlanned_gross(MoneyUtil.createMoneyFromCents(21500))
+                                .setHours(6d),
+                        new AggregatedRecord()
+                                .setAggregationPeriodStart(format.parse("01.01.2016"))
+                                .setAggregationPeriodEnd(format.parse("31.01.2016"))
+                                .setAggregationPeriodTitle("Month 2016-01")
+                                .setBudgetBurned_net(MoneyUtil.createMoneyFromCents(143750))
+                                .setBudgetPlanned_net(MoneyUtil.createMoneyFromCents(156250))
+                                .setBudgetBurned_gross(MoneyUtil.createMoneyFromCents(152219))
+                                .setBudgetPlanned_gross(MoneyUtil.createMoneyFromCents(166157))
+                                .setHours(115d),
+                        new AggregatedRecord()
+                                .setAggregationPeriodStart(format.parse("01.06.2016"))
+                                .setAggregationPeriodEnd(format.parse("30.06.2016"))
+                                .setAggregationPeriodTitle("Month 2016-06")
+                                .setBudgetBurned_net(MoneyUtil.createMoneyFromCents(201250))
+                                .setBudgetPlanned_net(MoneyUtil.createMoneyFromCents(208125))
+                                .setBudgetBurned_gross(MoneyUtil.createMoneyFromCents(221375))
+                                .setBudgetPlanned_gross(MoneyUtil.createMoneyFromCents(228938))
+                                .setHours(161d),
+                        new AggregatedRecord()
+                                .setAggregationPeriodStart(format.parse("01.07.2016"))
+                                .setAggregationPeriodEnd(format.parse("31.07.2016"))
+                                .setAggregationPeriodTitle("Month 2016-07")
+                                .setBudgetBurned_net(MoneyUtil.createMoneyFromCents(200000))
+                                .setBudgetPlanned_net(MoneyUtil.createMoneyFromCents(208125))
+                                .setBudgetBurned_gross(MoneyUtil.createMoneyFromCents(220000))
+                                .setBudgetPlanned_gross(MoneyUtil.createMoneyFromCents(228938))
+                                .setHours(160d)
+                );
     }
 
     private List<WeeklyAggregatedRecordBean> createWeeklyWorkRecords() {

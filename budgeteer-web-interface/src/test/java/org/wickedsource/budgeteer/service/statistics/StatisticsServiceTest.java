@@ -1,15 +1,20 @@
 package org.wickedsource.budgeteer.service.statistics;
 
+import org.assertj.core.api.Assertions;
+import org.assertj.core.groups.Tuple;
 import org.joda.money.Money;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.wickedsource.budgeteer.MoneyUtil;
+import org.wickedsource.budgeteer.persistence.contract.ContractRepository;
+import org.wickedsource.budgeteer.persistence.invoice.InvoiceRepository;
 import org.wickedsource.budgeteer.persistence.record.*;
 import org.wickedsource.budgeteer.service.DateProvider;
 import org.wickedsource.budgeteer.service.DateUtil;
-import org.wickedsource.budgeteer.service.ServiceTestTemplate;
 import org.wickedsource.budgeteer.service.budget.BudgetTagFilter;
 
 import java.math.BigDecimal;
@@ -20,413 +25,488 @@ import java.util.*;
 
 import static org.mockito.Mockito.*;
 
-class StatisticsServiceTest extends ServiceTestTemplate {
+@ExtendWith(MockitoExtension.class)
+class StatisticsServiceTest {
 
-    private DateFormat format = new SimpleDateFormat("dd.MM.yyyy");
-
-    @Autowired
-    private WorkRecordRepository workRecordRepository;
-
-    @Autowired
-    private PlanRecordRepository planRecordRepository;
-
-    @Autowired
-    private DateProvider dateProvider;
-
-    @Autowired
+    @InjectMocks
     private StatisticsService service;
+    @Mock
+    private WorkRecordRepository workRecordRepository;
+    @Mock
+    private PlanRecordRepository planRecordRepository;
+    @Mock
+    private DateUtil dateUtil;
+    @Mock
+    private ShareBeanToShareMapper shareBeanToShareMapper;
 
-    private static final Comparator<MoneySeries> moneySeriesComparator = new Comparator<MoneySeries>() {
-        @Override
-        public int compare(MoneySeries o1, MoneySeries o2) {
-            return o1.getName().compareTo(o2.getName());
-        }
-    };
+    private final DateFormat format = new SimpleDateFormat("dd.MM.yyyy");
+    private static final Comparator<MoneySeries> moneySeriesComparator = Comparator.comparing(MoneySeries::getName);
 
     @Test
-    void testGetWeeklyBudgetBurnedForProject() throws Exception {
-        when(dateProvider.currentDate()).thenReturn(format.parse("29.01.2015"));
+    void testGetWeeklyBudgetBurnedForProject() throws ParseException {
+        when(dateUtil.weeksAgo(5)).thenReturn(getWeeksAgoDate(format.parse("29.01.2015"), 5));
         when(workRecordRepository.aggregateByWeekForProject(anyLong(), any(Date.class))).thenReturn(createLast5Weeks());
+
         List<Money> resultList = service.getWeeklyBudgetBurnedForProject(1L, 5);
-        Assertions.assertEquals(5, resultList.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), resultList.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), resultList.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), resultList.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), resultList.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), resultList.get(4));
+
+        Assertions.assertThat(resultList)
+                .hasSize(5)
+                .containsAll(Arrays.asList(MoneyUtil.createMoneyFromCents(100000L),
+                        MoneyUtil.createMoneyFromCents(200000L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400000L),
+                        MoneyUtil.createMoneyFromCents(500000L)));
     }
 
     @Test
-    void testGetWeeklyBudgetPlannedForProject() throws Exception {
-        when(dateProvider.currentDate()).thenReturn(format.parse("29.01.2015"));
+    void testGetWeeklyBudgetPlannedForProject() throws ParseException {
+        when(dateUtil.weeksAgo(5)).thenReturn(getWeeksAgoDate(format.parse("29.01.2015"), 5));
         when(planRecordRepository.aggregateByWeekForProject(anyLong(), any(Date.class))).thenReturn(createLast5Weeks());
+
         List<Money> resultList = service.getWeeklyBudgetPlannedForProject(1L, 5);
-        Assertions.assertEquals(5, resultList.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), resultList.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), resultList.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), resultList.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), resultList.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), resultList.get(4));
+
+        Assertions.assertThat(resultList)
+                .hasSize(5)
+                .containsAll(Arrays.asList(MoneyUtil.createMoneyFromCents(100000L),
+                        MoneyUtil.createMoneyFromCents(200000L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400000L),
+                        MoneyUtil.createMoneyFromCents(500000L)));
     }
 
     @Test
     void testGetWeeklyBudgetBurnedForPerson() throws Exception {
-        when(dateProvider.currentDate()).thenReturn(format.parse("29.01.2015"));
+        when(dateUtil.weeksAgo(5)).thenReturn(getWeeksAgoDate(format.parse("29.01.2015"), 5));
         when(workRecordRepository.aggregateByWeekForPerson(anyLong(), any(Date.class))).thenReturn(createLast5Weeks());
+
         List<Money> resultList = service.getWeeklyBudgetBurnedForPerson(1L, 5);
-        Assertions.assertEquals(5, resultList.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), resultList.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), resultList.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), resultList.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), resultList.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), resultList.get(4));
+
+        Assertions.assertThat(resultList)
+                .hasSize(5)
+                .containsAll(Arrays.asList(MoneyUtil.createMoneyFromCents(100000L),
+                        MoneyUtil.createMoneyFromCents(200000L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400000L),
+                        MoneyUtil.createMoneyFromCents(500000L)));
     }
 
     @Test
     void testGetWeeklyBudgetPlannedForPerson() throws Exception {
-        when(dateProvider.currentDate()).thenReturn(format.parse("29.01.2015"));
+        when(dateUtil.weeksAgo(5)).thenReturn(getWeeksAgoDate(format.parse("29.01.2015"), 5));
         when(planRecordRepository.aggregateByWeekForPerson(anyLong(), any(Date.class))).thenReturn(createLast5Weeks());
+
         List<Money> resultList = service.getWeeklyBudgetPlannedForPerson(1L, 5);
-        Assertions.assertEquals(5, resultList.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), resultList.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), resultList.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), resultList.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), resultList.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), resultList.get(4));
+
+        Assertions.assertThat(resultList)
+                .hasSize(5)
+                .containsAll(Arrays.asList(MoneyUtil.createMoneyFromCents(100000L),
+                        MoneyUtil.createMoneyFromCents(200000L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400000L),
+                        MoneyUtil.createMoneyFromCents(500000L)));
     }
-
-    private List<WeeklyAggregatedRecordBean> createLast5Weeks() {
-        List<WeeklyAggregatedRecordBean> beans = new ArrayList<>();
-        beans.add(new WeeklyAggregatedRecordBean(2015, 1, 15d, 100000));
-        beans.add(new WeeklyAggregatedRecordBean(2015, 2, 15d, 200000));
-        beans.add(new WeeklyAggregatedRecordBean(2015, 4, 15d, 400000));
-        beans.add(new WeeklyAggregatedRecordBean(2015, 5, 15d, 500000));
-        return beans;
-    }
-
-    private List<WeeklyAggregatedRecordWithTaxBean> createLast5WeeksWithTax() {
-        List<WeeklyAggregatedRecordWithTaxBean> beans = new ArrayList<>();
-        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 1, 1, 900, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(10)));
-        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 1, 2, 910, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(10)));
-        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 1, 4, 920, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(10)));
-        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 2, 4, 930, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(10)));
-        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 2, 5, 940, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(10)));
-
-        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 1, 1, 910, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(20)));
-        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 1, 2, 920, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(20)));
-        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 1, 4, 930, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(20)));
-        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 2, 5, 940, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(20)));
-        return beans;
-    }
-
-    private List<MonthlyAggregatedRecordBean> createLast5Months() {
-        List<MonthlyAggregatedRecordBean> beans = new ArrayList<>();
-        beans.add(new MonthlyAggregatedRecordBean(2014, 8, 15d, 100000));
-        beans.add(new MonthlyAggregatedRecordBean(2014, 9, 15d, 200000));
-        beans.add(new MonthlyAggregatedRecordBean(2014, 11, 15d, 400000));
-        beans.add(new MonthlyAggregatedRecordBean(2015, 0, 15d, 500000));
-        return beans;
-    }
-
 
     @Test
     void testGetAvgDailyRateForPreviousDays() throws Exception {
-        when(dateProvider.currentDate()).thenReturn(format.parse("05.01.2015"));
+        when(dateUtil.daysAgo(5)).thenReturn(getDaysAgoDate(format.parse("05.01.2015"), 5));
         when(workRecordRepository.getAverageDailyRatesPerDay(anyLong(), any(Date.class))).thenReturn(createLast5Days());
+
         List<Money> resultList = service.getAvgDailyRateForPreviousDays(1L, 5);
-        Assertions.assertEquals(5, resultList.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100L), resultList.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200L), resultList.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), resultList.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400L), resultList.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500L), resultList.get(4));
-    }
 
-    private List<DailyAverageRateBean> createLast5Days() {
-        List<DailyAverageRateBean> beans = new ArrayList<>();
-        beans.add(new DailyAverageRateBean(2015, 0, 1, 100d));
-        beans.add(new DailyAverageRateBean(2015, 0, 2, 200d));
-        beans.add(new DailyAverageRateBean(2015, 0, 4, 400d));
-        beans.add(new DailyAverageRateBean(2015, 0, 5, 500d));
-        return beans;
+        Assertions.assertThat(resultList)
+                .hasSize(5)
+                .containsAll(Arrays.asList(MoneyUtil.createMoneyFromCents(100L),
+                        MoneyUtil.createMoneyFromCents(200L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400L),
+                        MoneyUtil.createMoneyFromCents(500L)));
     }
 
     @Test
-    void testGetBudgetDistribution() throws Exception {
+    void testGetBudgetDistribution() {
+        when(shareBeanToShareMapper.map(ArgumentMatchers.<ShareBean>anyList())).thenCallRealMethod();
+        when(shareBeanToShareMapper.map(any(ShareBean.class))).thenCallRealMethod();
         when(workRecordRepository.getBudgetShareForPerson(1L)).thenReturn(createShares());
-        List<Share> shares = service.getBudgetDistribution(1L);
-        Assertions.assertEquals(4, shares.size());
-        Assertions.assertEquals("share1", shares.get(0).getName());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(10000L), shares.get(0).getShare());
-        Assertions.assertEquals("share2", shares.get(1).getName());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(20000L), shares.get(1).getShare());
-        Assertions.assertEquals("share3", shares.get(2).getName());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(30000L), shares.get(2).getShare());
-        Assertions.assertEquals("share4", shares.get(3).getName());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(40000L), shares.get(3).getShare());
-    }
 
-    private List<ShareBean> createShares() {
-        List<ShareBean> shares = new ArrayList<>();
-        shares.add(new ShareBean("share1", 10000L));
-        shares.add(new ShareBean("share2", 20000L));
-        shares.add(new ShareBean("share3", 30000L));
-        shares.add(new ShareBean("share4", 40000L));
-        return shares;
+        List<Share> shares = service.getBudgetDistribution(1L);
+
+        Assertions.assertThat(shares)
+                .hasSize(4)
+                .extracting(Share::getName, Share::getShare)
+                .containsAll(Arrays.asList(
+                        Tuple.tuple("share1", MoneyUtil.createMoneyFromCents(10000L)),
+                        Tuple.tuple("share2", MoneyUtil.createMoneyFromCents(20000L)),
+                        Tuple.tuple("share3", MoneyUtil.createMoneyFromCents(30000L)),
+                        Tuple.tuple("share4", MoneyUtil.createMoneyFromCents(40000L))));
     }
 
     @Test
-    void testGetPeopleDistribution() throws Exception {
+    void testGetPeopleDistribution() {
+        when(shareBeanToShareMapper.map(ArgumentMatchers.<ShareBean>anyList())).thenCallRealMethod();
+        when(shareBeanToShareMapper.map(any(ShareBean.class))).thenCallRealMethod();
         when(workRecordRepository.getPersonShareForBudget(1L)).thenReturn(createShares());
+
         List<Share> shares = service.getPeopleDistribution(1L);
-        Assertions.assertEquals(4, shares.size());
-        Assertions.assertEquals("share1", shares.get(0).getName());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(10000L), shares.get(0).getShare());
-        Assertions.assertEquals("share2", shares.get(1).getName());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(20000L), shares.get(1).getShare());
-        Assertions.assertEquals("share3", shares.get(2).getName());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(30000L), shares.get(2).getShare());
-        Assertions.assertEquals("share4", shares.get(3).getName());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(40000L), shares.get(3).getShare());
+
+        Assertions.assertThat(shares)
+                .hasSize(4)
+                .extracting(Share::getName, Share::getShare)
+                .containsAll(Arrays.asList(
+                        Tuple.tuple("share1", MoneyUtil.createMoneyFromCents(10000L)),
+                        Tuple.tuple("share2", MoneyUtil.createMoneyFromCents(20000L)),
+                        Tuple.tuple("share3", MoneyUtil.createMoneyFromCents(30000L)),
+                        Tuple.tuple("share4", MoneyUtil.createMoneyFromCents(40000L))));
     }
 
     @Test
     void testGetWeekStatsForPerson() throws Exception {
-        when(dateProvider.currentDate()).thenReturn(format.parse("29.01.2015"));
+        when(dateUtil.weeksAgo(5)).thenReturn(getWeeksAgoDate(format.parse("29.01.2015"), 5));
         when(workRecordRepository.aggregateByWeekAndBudgetForPerson(anyLong(), any(Date.class))).thenReturn(createLast5WeeksForBudget());
         when(planRecordRepository.aggregateByWeekForPerson(anyLong(), any(Date.class))).thenReturn(createLast5Weeks());
+
         TargetAndActual targetAndActual = service.getWeekStatsForPerson(1L, 5);
 
         List<Money> targetSeries = targetAndActual.getTargetSeries().getValues();
-        Assertions.assertEquals(5, targetSeries.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), targetSeries.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), targetSeries.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), targetSeries.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), targetSeries.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), targetSeries.get(4));
+        Assertions.assertThat(targetSeries)
+                .hasSize(5)
+                .containsAll(Arrays.asList(MoneyUtil.createMoneyFromCents(100000L),
+                        MoneyUtil.createMoneyFromCents(200000L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400000L),
+                        MoneyUtil.createMoneyFromCents(500000L)));
 
-        Assertions.assertEquals(2, targetAndActual.getActualSeries().size());
         targetAndActual.getActualSeries().sort(moneySeriesComparator);
 
-        MoneySeries actualSeries1 = targetAndActual.getActualSeries().get(1);
-        Assertions.assertEquals("Budget 2", actualSeries1.getName());
-        Assertions.assertEquals(5, actualSeries1.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), actualSeries1.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), actualSeries1.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), actualSeries1.getValues().get(4));
-
-        MoneySeries actualSeries2 = targetAndActual.getActualSeries().get(0);
-        Assertions.assertEquals("Budget 1", actualSeries2.getName());
-        Assertions.assertEquals(5, actualSeries1.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), actualSeries2.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), actualSeries2.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries2.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), actualSeries2.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), actualSeries2.getValues().get(4));
+        Assertions.assertThat(targetAndActual.getActualSeries())
+                .hasSize(2)
+                .isSortedAccordingTo(moneySeriesComparator)
+                .extracting(MoneySeries::getName, MoneySeries::getValues)
+                .containsExactly(
+                        Tuple.tuple("Budget 1", Arrays.asList(
+                                MoneyUtil.createMoneyFromCents(100000L),
+                                MoneyUtil.createMoneyFromCents(200000L),
+                                MoneyUtil.createMoneyFromCents(0L),
+                                MoneyUtil.createMoneyFromCents(400000L),
+                                MoneyUtil.createMoneyFromCents(500000L))),
+                        Tuple.tuple("Budget 2", Arrays.asList(
+                                MoneyUtil.createMoneyFromCents(100000L),
+                                MoneyUtil.createMoneyFromCents(200000L),
+                                MoneyUtil.createMoneyFromCents(0L),
+                                MoneyUtil.createMoneyFromCents(0L),
+                                MoneyUtil.createMoneyFromCents(500000L))));
     }
 
     @Test
     void testGetWeekStatsForBudget() throws Exception {
-        when(dateProvider.currentDate()).thenReturn(format.parse("29.01.2015"));
+        when(dateUtil.weeksAgo(5)).thenReturn(getWeeksAgoDate(format.parse("29.01.2015"), 5));
         when(workRecordRepository.aggregateByWeekAndPersonForBudget(anyLong(), any(Date.class))).thenReturn(createLast5WeeksForPerson());
         when(planRecordRepository.aggregateByWeekForBudget(anyLong(), any(Date.class))).thenReturn(createLast5Weeks());
+
         TargetAndActual targetAndActual = service.getWeekStatsForBudget(1L, 5);
 
         List<Money> targetSeries = targetAndActual.getTargetSeries().getValues();
-        Assertions.assertEquals(5, targetSeries.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), targetSeries.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), targetSeries.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), targetSeries.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), targetSeries.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), targetSeries.get(4));
+        Assertions.assertThat(targetSeries)
+                .hasSize(5)
+                .containsAll(Arrays.asList(MoneyUtil.createMoneyFromCents(100000L),
+                        MoneyUtil.createMoneyFromCents(200000L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400000L),
+                        MoneyUtil.createMoneyFromCents(500000L)));
 
-        Assertions.assertEquals(2, targetAndActual.getActualSeries().size());
         targetAndActual.getActualSeries().sort(moneySeriesComparator);
 
-        MoneySeries actualSeries1 = targetAndActual.getActualSeries().get(1);
-        Assertions.assertEquals("Person 2", actualSeries1.getName());
-        Assertions.assertEquals(5, actualSeries1.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), actualSeries1.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), actualSeries1.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), actualSeries1.getValues().get(4));
-
-        MoneySeries actualSeries2 = targetAndActual.getActualSeries().get(0);
-        Assertions.assertEquals("Person 1", actualSeries2.getName());
-        Assertions.assertEquals(5, actualSeries1.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), actualSeries2.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), actualSeries2.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries2.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), actualSeries2.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), actualSeries2.getValues().get(4));
+        Assertions.assertThat(targetAndActual.getActualSeries())
+                .hasSize(2)
+                .isSortedAccordingTo(moneySeriesComparator)
+                .extracting(MoneySeries::getName, MoneySeries::getValues)
+                .containsExactly(
+                        Tuple.tuple("Person 1", Arrays.asList(
+                                MoneyUtil.createMoneyFromCents(100000L),
+                                MoneyUtil.createMoneyFromCents(200000L),
+                                MoneyUtil.createMoneyFromCents(0L),
+                                MoneyUtil.createMoneyFromCents(400000L),
+                                MoneyUtil.createMoneyFromCents(500000L))),
+                        Tuple.tuple("Person 2", Arrays.asList(
+                                MoneyUtil.createMoneyFromCents(100000L),
+                                MoneyUtil.createMoneyFromCents(200000L),
+                                MoneyUtil.createMoneyFromCents(0L),
+                                MoneyUtil.createMoneyFromCents(0L),
+                                MoneyUtil.createMoneyFromCents(500000L))));
     }
 
     @Test
     void testGetWeekStatsForBudgetWithTax() throws Exception {
-        when(dateProvider.currentDate()).thenReturn(format.parse("29.01.2015"));
+        when(dateUtil.weeksAgo(5)).thenReturn(getWeeksAgoDate(format.parse("29.01.2015"), 5));
         List<WeeklyAggregatedRecordWithTitleAndTaxBean> burnedStats = ListJoiner.joinWorkBeanHours(createLast5WeeksForPersonWithTax());
         List<WeeklyAggregatedRecordWithTaxBean> planStats = ListJoiner.joinPlanBeanHours(createLast5WeeksWithTax());
         MonthlyStats monthlyStats = createMonthlyStatsForPeople();
         monthlyStats.sumPlanStats();
         monthlyStats.calculateCentValuesByMonthlyFraction(planStats, burnedStats);
+
         TargetAndActual targetAndActual = service.calculateWeeklyTargetAndActual(5, planStats, burnedStats);
 
-        List<Money> targetSeries_net = targetAndActual.getTargetSeries().getValues();
-        Assertions.assertEquals(5, targetSeries_net.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(37500), targetSeries_net.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(38125), targetSeries_net.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), targetSeries_net.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(58125), targetSeries_net.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(38750), targetSeries_net.get(4));
-
-        List<Money> targetSeries_gross = targetAndActual.getTargetSeries().getValues_gross();
-
-        Assertions.assertEquals(5, targetSeries_net.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(43125), targetSeries_gross.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(43875), targetSeries_gross.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), targetSeries_gross.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(65875), targetSeries_gross.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(44563), targetSeries_gross.get(4));
-
-        Assertions.assertEquals(2, targetAndActual.getActualSeries().size());
+        Assertions.assertThat(targetAndActual.getTargetSeries())
+                .extracting(MoneySeries::getValues, MoneySeries::getValues_gross)
+                .containsExactly(Arrays.asList(MoneyUtil.createMoneyFromCents(37500),
+                        MoneyUtil.createMoneyFromCents(38125),
+                        MoneyUtil.createMoneyFromCents(0),
+                        MoneyUtil.createMoneyFromCents(58125),
+                        MoneyUtil.createMoneyFromCents(38750)),
+                        Arrays.asList(MoneyUtil.createMoneyFromCents(43125),
+                                MoneyUtil.createMoneyFromCents(43875),
+                                MoneyUtil.createMoneyFromCents(0),
+                                MoneyUtil.createMoneyFromCents(65875),
+                                MoneyUtil.createMoneyFromCents(44563)));
 
         targetAndActual.getActualSeries().sort(moneySeriesComparator);
 
-        MoneySeries actualSeries1 = targetAndActual.getActualSeries().get(0);
-        Assertions.assertEquals("Person 1", actualSeries1.getName());
-        Assertions.assertEquals(5, actualSeries1.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(18750), actualSeries1.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(20000), actualSeries1.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(57500), actualSeries1.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(19375), actualSeries1.getValues().get(4));
-
-        Assertions.assertEquals(5, actualSeries1.getValues_gross().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(20625), actualSeries1.getValues_gross().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(22000), actualSeries1.getValues_gross().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues_gross().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(67125), actualSeries1.getValues_gross().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(21313), actualSeries1.getValues_gross().get(4));
-
-        MoneySeries actualSeries2 = targetAndActual.getActualSeries().get(1);
-        Assertions.assertEquals("Person 2", actualSeries2.getName());
-        Assertions.assertEquals(5, actualSeries2.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(38125), actualSeries2.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(19375), actualSeries2.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries2.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(19375), actualSeries2.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0), actualSeries2.getValues().get(4));
-
-        Assertions.assertEquals(5, actualSeries2.getValues_gross().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(43813), actualSeries2.getValues_gross().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(21313), actualSeries2.getValues_gross().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries2.getValues_gross().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(21313), actualSeries2.getValues_gross().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0), actualSeries2.getValues_gross().get(4));
+        Assertions.assertThat(targetAndActual.getActualSeries())
+                .hasSize(2)
+                .isSortedAccordingTo(moneySeriesComparator)
+                .extracting(MoneySeries::getName, MoneySeries::getValues, MoneySeries::getValues_gross)
+                .containsExactly(Tuple.tuple("Person 1",
+                        Arrays.asList(MoneyUtil.createMoneyFromCents(18750),
+                                MoneyUtil.createMoneyFromCents(20000),
+                                MoneyUtil.createMoneyFromCents(0),
+                                MoneyUtil.createMoneyFromCents(57500),
+                                MoneyUtil.createMoneyFromCents(19375)),
+                        Arrays.asList(MoneyUtil.createMoneyFromCents(20625),
+                                MoneyUtil.createMoneyFromCents(22000),
+                                MoneyUtil.createMoneyFromCents(0),
+                                MoneyUtil.createMoneyFromCents(67125),
+                                MoneyUtil.createMoneyFromCents(21313))),
+                        Tuple.tuple("Person 2",
+                                Arrays.asList(MoneyUtil.createMoneyFromCents(38125),
+                                        MoneyUtil.createMoneyFromCents(19375),
+                                        MoneyUtil.createMoneyFromCents(0),
+                                        MoneyUtil.createMoneyFromCents(19375),
+                                        MoneyUtil.createMoneyFromCents(0)),
+                                Arrays.asList(MoneyUtil.createMoneyFromCents(43813),
+                                        MoneyUtil.createMoneyFromCents(21313),
+                                        MoneyUtil.createMoneyFromCents(0),
+                                        MoneyUtil.createMoneyFromCents(21313),
+                                        MoneyUtil.createMoneyFromCents(0))));
     }
 
     @Test
     void testGetWeekStatsForBudgets() throws Exception {
-        when(dateProvider.currentDate()).thenReturn(format.parse("29.01.2015"));
+        when(dateUtil.weeksAgo(5)).thenReturn(getWeeksAgoDate(format.parse("29.01.2015"), 5));
         when(workRecordRepository.aggregateByWeekAndPersonForBudgets(anyLong(), anyList(), any(Date.class))).thenReturn(createLast5WeeksForBudget());
         when(planRecordRepository.aggregateByWeekForBudgets(anyLong(), anyList(), any(Date.class))).thenReturn(createLast5Weeks());
-        TargetAndActual targetAndActual = service.getWeekStatsForBudgets(new BudgetTagFilter(Arrays.asList("tag1"), 1L), 5);
 
-        List<Money> targetSeries = targetAndActual.getTargetSeries().getValues();
-        Assertions.assertEquals(5, targetSeries.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), targetSeries.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), targetSeries.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), targetSeries.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), targetSeries.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), targetSeries.get(4));
+        TargetAndActual targetAndActual = service.getWeekStatsForBudgets(new BudgetTagFilter(Collections.singletonList("tag1"), 1L), 5);
 
-        Assertions.assertEquals(2, targetAndActual.getActualSeries().size());
+        Assertions.assertThat(targetAndActual.getTargetSeries().getValues())
+                .hasSize(5)
+                .containsExactly(MoneyUtil.createMoneyFromCents(100000L),
+                        MoneyUtil.createMoneyFromCents(200000L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400000L),
+                        MoneyUtil.createMoneyFromCents(500000L));
+
         targetAndActual.getActualSeries().sort(moneySeriesComparator);
 
-        MoneySeries actualSeries1 = targetAndActual.getActualSeries().get(1);
-        Assertions.assertEquals("Budget 2", actualSeries1.getName());
-        Assertions.assertEquals(5, actualSeries1.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), actualSeries1.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), actualSeries1.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), actualSeries1.getValues().get(4));
-
-        MoneySeries actualSeries2 = targetAndActual.getActualSeries().get(0);
-        Assertions.assertEquals("Budget 1", actualSeries2.getName());
-        Assertions.assertEquals(5, actualSeries1.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), actualSeries2.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), actualSeries2.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries2.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), actualSeries2.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), actualSeries2.getValues().get(4));
+        Assertions.assertThat(targetAndActual.getActualSeries())
+                .hasSize(2)
+                .isSortedAccordingTo(moneySeriesComparator)
+                .extracting(MoneySeries::getName, MoneySeries::getValues)
+                .containsExactly(Tuple.tuple("Budget 1", Arrays.asList(
+                        MoneyUtil.createMoneyFromCents(100000L),
+                        MoneyUtil.createMoneyFromCents(200000L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400000L),
+                        MoneyUtil.createMoneyFromCents(500000L))),
+                        Tuple.tuple("Budget 2", Arrays.asList(
+                                MoneyUtil.createMoneyFromCents(100000L),
+                                MoneyUtil.createMoneyFromCents(200000L),
+                                MoneyUtil.createMoneyFromCents(0L),
+                                MoneyUtil.createMoneyFromCents(0L),
+                                MoneyUtil.createMoneyFromCents(500000L))));
     }
 
     @Test
     void testGetWeekStatsForBudgetsWithTax() throws Exception {
-        when(dateProvider.currentDate()).thenReturn(format.parse("29.01.2015"));
+        when(dateUtil.weeksAgo(5)).thenReturn(getWeeksAgoDate(format.parse("29.01.2015"), 5));
         List<WeeklyAggregatedRecordWithTitleAndTaxBean> burnedStats = ListJoiner.joinWorkBeanHours(createLast5WeeksForBudgetWithTax());
         List<WeeklyAggregatedRecordWithTaxBean> planStats = ListJoiner.joinPlanBeanHours(createLast5WeeksWithTax());
         MonthlyStats monthlyStats = createMonthlyStatsForBudgets();
         monthlyStats.sumPlanStats();
         monthlyStats.calculateCentValuesByMonthlyFraction(planStats, burnedStats);
+
         TargetAndActual targetAndActual = service.calculateWeeklyTargetAndActual(5, planStats, burnedStats);
 
-        List<Money> targetSeries_net = targetAndActual.getTargetSeries().getValues();
-        Assertions.assertEquals(5, targetSeries_net.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(37500), targetSeries_net.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(38125), targetSeries_net.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), targetSeries_net.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(58125), targetSeries_net.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(38750), targetSeries_net.get(4));
-
-        List<Money> targetSeries_gross = targetAndActual.getTargetSeries().getValues_gross();
-
-        Assertions.assertEquals(5, targetSeries_net.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(43125), targetSeries_gross.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(43875), targetSeries_gross.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), targetSeries_gross.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(65875), targetSeries_gross.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(44563), targetSeries_gross.get(4));
-
-        Assertions.assertEquals(2, targetAndActual.getActualSeries().size());
+        Assertions.assertThat(targetAndActual.getTargetSeries())
+                .extracting(MoneySeries::getValues, MoneySeries::getValues_gross)
+                .containsExactly(Arrays.asList(MoneyUtil.createMoneyFromCents(37500),
+                        MoneyUtil.createMoneyFromCents(38125),
+                        MoneyUtil.createMoneyFromCents(0),
+                        MoneyUtil.createMoneyFromCents(58125),
+                        MoneyUtil.createMoneyFromCents(38750)),
+                        Arrays.asList(MoneyUtil.createMoneyFromCents(43125),
+                                MoneyUtil.createMoneyFromCents(43875),
+                                MoneyUtil.createMoneyFromCents(0),
+                                MoneyUtil.createMoneyFromCents(65875),
+                                MoneyUtil.createMoneyFromCents(44563)));
 
         targetAndActual.getActualSeries().sort(moneySeriesComparator);
 
-        MoneySeries actualSeries1 = targetAndActual.getActualSeries().get(0);
-        Assertions.assertEquals("Budget 1", actualSeries1.getName());
-        Assertions.assertEquals(5, actualSeries1.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(18750), actualSeries1.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(20000), actualSeries1.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(57500), actualSeries1.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(19375), actualSeries1.getValues().get(4));
+        Assertions.assertThat(targetAndActual.getActualSeries())
+                .hasSize(2)
+                .isSortedAccordingTo(moneySeriesComparator)
+                .extracting(MoneySeries::getName, MoneySeries::getValues, MoneySeries::getValues_gross)
+                .containsExactly(Tuple.tuple("Budget 1",
+                        Arrays.asList(MoneyUtil.createMoneyFromCents(18750),
+                                MoneyUtil.createMoneyFromCents(20000),
+                                MoneyUtil.createMoneyFromCents(0),
+                                MoneyUtil.createMoneyFromCents(57500),
+                                MoneyUtil.createMoneyFromCents(19375)),
+                        Arrays.asList(MoneyUtil.createMoneyFromCents(20625),
+                                MoneyUtil.createMoneyFromCents(22000),
+                                MoneyUtil.createMoneyFromCents(0),
+                                MoneyUtil.createMoneyFromCents(67125),
+                                MoneyUtil.createMoneyFromCents(21313))),
+                        Tuple.tuple("Budget 2",
+                                Arrays.asList(MoneyUtil.createMoneyFromCents(38125),
+                                        MoneyUtil.createMoneyFromCents(19375),
+                                        MoneyUtil.createMoneyFromCents(0),
+                                        MoneyUtil.createMoneyFromCents(19375),
+                                        MoneyUtil.createMoneyFromCents(0)),
+                                Arrays.asList(MoneyUtil.createMoneyFromCents(43813),
+                                        MoneyUtil.createMoneyFromCents(21313),
+                                        MoneyUtil.createMoneyFromCents(0),
+                                        MoneyUtil.createMoneyFromCents(21313),
+                                        MoneyUtil.createMoneyFromCents(0))));
+    }
 
-        Assertions.assertEquals(5, actualSeries1.getValues_gross().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(20625), actualSeries1.getValues_gross().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(22000), actualSeries1.getValues_gross().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues_gross().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(67125), actualSeries1.getValues_gross().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(21313), actualSeries1.getValues_gross().get(4));
+    @Test
+    void testGetMonthStatsForPerson() throws Exception {
+        when(dateUtil.monthsAgo(5)).thenReturn(getMonthsAgoDate(format.parse("29.01.2015"), 5));
+        when(workRecordRepository.aggregateByMonthAndBudgetForPerson(anyLong(), any(Date.class))).thenReturn(createLast5MonthsForBudget());
+        when(planRecordRepository.aggregateByMonthForPerson(anyLong(), any(Date.class))).thenReturn(createLast5Months());
 
-        MoneySeries actualSeries2 = targetAndActual.getActualSeries().get(1);
-        Assertions.assertEquals("Budget 2", actualSeries2.getName());
-        Assertions.assertEquals(5, actualSeries2.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(38125), actualSeries2.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(19375), actualSeries2.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries2.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(19375), actualSeries2.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0), actualSeries2.getValues().get(4));
+        TargetAndActual targetAndActual = service.getMonthStatsForPerson(1L, 5);
 
-        Assertions.assertEquals(5, actualSeries2.getValues_gross().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(43813), actualSeries2.getValues_gross().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(21313), actualSeries2.getValues_gross().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries2.getValues_gross().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(21313), actualSeries2.getValues_gross().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0), actualSeries2.getValues_gross().get(4));
+
+        Assertions.assertThat(targetAndActual.getTargetSeries().getValues())
+                .hasSize(5)
+                .containsExactly(MoneyUtil.createMoneyFromCents(100000L),
+                        MoneyUtil.createMoneyFromCents(200000L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400000L),
+                        MoneyUtil.createMoneyFromCents(500000L));
+
+        targetAndActual.getActualSeries().sort(moneySeriesComparator);
+
+        Assertions.assertThat(targetAndActual.getActualSeries())
+                .hasSize(2)
+                .isSortedAccordingTo(moneySeriesComparator)
+                .extracting(MoneySeries::getName, MoneySeries::getValues)
+                .containsExactly(Tuple.tuple("Budget 1", Arrays.asList(
+                        MoneyUtil.createMoneyFromCents(100000L),
+                        MoneyUtil.createMoneyFromCents(200000L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400000L),
+                        MoneyUtil.createMoneyFromCents(500000L))),
+                        Tuple.tuple("Budget 2", Arrays.asList(
+                                MoneyUtil.createMoneyFromCents(100000L),
+                                MoneyUtil.createMoneyFromCents(200000L),
+                                MoneyUtil.createMoneyFromCents(0L),
+                                MoneyUtil.createMoneyFromCents(0L),
+                                MoneyUtil.createMoneyFromCents(500000L))));
+    }
+
+    @Test
+    void testGetMonthStatsForBudgets() throws Exception {
+        when(dateUtil.monthsAgo(5)).thenReturn(getMonthsAgoDate(format.parse("29.01.2015"), 5));
+        when(workRecordRepository.aggregateByMonthAndPersonForBudgets(anyLong(), anyList(), any(Date.class))).thenReturn(createLast5MonthsForBudget());
+        when(planRecordRepository.aggregateByMonthForBudgets(anyLong(), anyList(), any(Date.class))).thenReturn(createLast5Months());
+
+        TargetAndActual targetAndActual = service.getMonthStatsForBudgets(new BudgetTagFilter(Collections.singletonList("tag1"), 1L), 5);
+
+        Assertions.assertThat(targetAndActual.getTargetSeries().getValues())
+                .hasSize(5)
+                .containsExactly(MoneyUtil.createMoneyFromCents(100000L),
+                        MoneyUtil.createMoneyFromCents(200000L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400000L),
+                        MoneyUtil.createMoneyFromCents(500000L));
+
+        targetAndActual.getActualSeries().sort(moneySeriesComparator);
+
+        Assertions.assertThat(targetAndActual.getActualSeries())
+                .hasSize(2)
+                .isSortedAccordingTo(moneySeriesComparator)
+                .extracting(MoneySeries::getName, MoneySeries::getValues)
+                .containsExactly(Tuple.tuple("Budget 1", Arrays.asList(
+                        MoneyUtil.createMoneyFromCents(100000L),
+                        MoneyUtil.createMoneyFromCents(200000L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400000L),
+                        MoneyUtil.createMoneyFromCents(500000L))),
+                        Tuple.tuple("Budget 2", Arrays.asList(
+                                MoneyUtil.createMoneyFromCents(100000L),
+                                MoneyUtil.createMoneyFromCents(200000L),
+                                MoneyUtil.createMoneyFromCents(0L),
+                                MoneyUtil.createMoneyFromCents(0L),
+                                MoneyUtil.createMoneyFromCents(500000L))));
+    }
+
+    @Test
+    void testGetMonthStatsForBudget() throws Exception {
+        when(dateUtil.monthsAgo(5)).thenReturn(getMonthsAgoDate(format.parse("29.01.2015"), 5));
+        when(workRecordRepository.aggregateByMonthAndPersonForBudget(anyLong(), any(Date.class))).thenReturn(createLast5MonthsForBudget());
+        when(planRecordRepository.aggregateByMonthForBudget(anyLong(), any(Date.class))).thenReturn(createLast5Months());
+
+        TargetAndActual targetAndActual = service.getMonthStatsForBudget(1L, 5);
+
+        Assertions.assertThat(targetAndActual.getTargetSeries().getValues())
+                .hasSize(5)
+                .containsExactly(MoneyUtil.createMoneyFromCents(100000L),
+                        MoneyUtil.createMoneyFromCents(200000L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400000L),
+                        MoneyUtil.createMoneyFromCents(500000L));
+
+        targetAndActual.getActualSeries().sort(moneySeriesComparator);
+
+        Assertions.assertThat(targetAndActual.getActualSeries())
+                .hasSize(2)
+                .isSortedAccordingTo(moneySeriesComparator)
+                .extracting(MoneySeries::getName, MoneySeries::getValues)
+                .containsExactly(Tuple.tuple("Budget 1", Arrays.asList(
+                        MoneyUtil.createMoneyFromCents(100000L),
+                        MoneyUtil.createMoneyFromCents(200000L),
+                        MoneyUtil.createMoneyFromCents(0L),
+                        MoneyUtil.createMoneyFromCents(400000L),
+                        MoneyUtil.createMoneyFromCents(500000L))),
+                        Tuple.tuple("Budget 2", Arrays.asList(
+                                MoneyUtil.createMoneyFromCents(100000L),
+                                MoneyUtil.createMoneyFromCents(200000L),
+                                MoneyUtil.createMoneyFromCents(0L),
+                                MoneyUtil.createMoneyFromCents(0L),
+                                MoneyUtil.createMoneyFromCents(500000L))));
+    }
+
+    @Test
+    void testFillMissingMonths() throws ParseException {
+        when(dateUtil.monthsAgo(5)).thenReturn(getMonthsAgoDate(format.parse("01.05.2015"), 5));
+        List<MonthlyAggregatedRecordBean> beans = Arrays.asList(
+                new MonthlyAggregatedRecordBean(2015, 1, 15d, 100000),
+                new MonthlyAggregatedRecordBean(2015, 2, 15d, 200000),
+                new MonthlyAggregatedRecordBean(2015, 4, 15d, 400000),
+                new MonthlyAggregatedRecordBean(2015, 5, 15d, 500000)
+        );
+        List<Money> testList = new ArrayList<>();
+
+        service.fillMissingMonths(5, beans, testList);
+
+        Assertions.assertThat(testList)
+                .hasSize(5)
+                .containsExactly(MoneyUtil.createMoneyFromCents(0),
+                        MoneyUtil.createMoneyFromCents(100000),
+                        MoneyUtil.createMoneyFromCents(200000),
+                        MoneyUtil.createMoneyFromCents(0),
+                        MoneyUtil.createMoneyFromCents(400000));
     }
 
     private MonthlyStats createMonthlyStatsForBudgets() {
@@ -538,136 +618,76 @@ class StatisticsServiceTest extends ServiceTestTemplate {
         return beans;
     }
 
-    @Test
-    void testGetMonthStatsForPerson() throws Exception {
-        when(dateProvider.currentDate()).thenReturn(format.parse("29.01.2015"));
-        when(workRecordRepository.aggregateByMonthAndBudgetForPerson(anyLong(), any(Date.class))).thenReturn(createLast5MonthsForBudget());
-        when(planRecordRepository.aggregateByMonthForPerson(anyLong(), any(Date.class))).thenReturn(createLast5Months());
-        TargetAndActual targetAndActual = service.getMonthStatsForPerson(1L, 5);
-
-        List<Money> targetSeries = targetAndActual.getTargetSeries().getValues();
-        Assertions.assertEquals(5, targetSeries.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), targetSeries.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), targetSeries.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), targetSeries.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), targetSeries.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), targetSeries.get(4));
-
-        Assertions.assertEquals(2, targetAndActual.getActualSeries().size());
-        targetAndActual.getActualSeries().sort(moneySeriesComparator);
-
-        MoneySeries actualSeries1 = targetAndActual.getActualSeries().get(1);
-        Assertions.assertEquals("Budget 2", actualSeries1.getName());
-        Assertions.assertEquals(5, actualSeries1.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), actualSeries1.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), actualSeries1.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), actualSeries1.getValues().get(4));
-
-        MoneySeries actualSeries2 = targetAndActual.getActualSeries().get(0);
-        Assertions.assertEquals("Budget 1", actualSeries2.getName());
-        Assertions.assertEquals(5, actualSeries1.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), actualSeries2.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), actualSeries2.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries2.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), actualSeries2.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), actualSeries2.getValues().get(4));
+    private List<WeeklyAggregatedRecordBean> createLast5Weeks() {
+        List<WeeklyAggregatedRecordBean> beans = new ArrayList<>();
+        beans.add(new WeeklyAggregatedRecordBean(2015, 1, 15d, 100000));
+        beans.add(new WeeklyAggregatedRecordBean(2015, 2, 15d, 200000));
+        beans.add(new WeeklyAggregatedRecordBean(2015, 4, 15d, 400000));
+        beans.add(new WeeklyAggregatedRecordBean(2015, 5, 15d, 500000));
+        return beans;
     }
 
-    @Test
-    void testGetMonthStatsForBudgets() throws Exception {
-        when(dateProvider.currentDate()).thenReturn(format.parse("29.01.2015"));
-        when(workRecordRepository.aggregateByMonthAndPersonForBudgets(anyLong(), anyList(), any(Date.class))).thenReturn(createLast5MonthsForBudget());
-        when(planRecordRepository.aggregateByMonthForBudgets(anyLong(), anyList(), any(Date.class))).thenReturn(createLast5Months());
-        TargetAndActual targetAndActual = service.getMonthStatsForBudgets(new BudgetTagFilter(Arrays.asList("tag1"), 1L), 5);
+    private List<WeeklyAggregatedRecordWithTaxBean> createLast5WeeksWithTax() {
+        List<WeeklyAggregatedRecordWithTaxBean> beans = new ArrayList<>();
+        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 1, 1, 900, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(10)));
+        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 1, 2, 910, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(10)));
+        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 1, 4, 920, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(10)));
+        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 2, 4, 930, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(10)));
+        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 2, 5, 940, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(10)));
 
-        List<Money> targetSeries = targetAndActual.getTargetSeries().getValues();
-        Assertions.assertEquals(5, targetSeries.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), targetSeries.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), targetSeries.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), targetSeries.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), targetSeries.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), targetSeries.get(4));
-
-        Assertions.assertEquals(2, targetAndActual.getActualSeries().size());
-        targetAndActual.getActualSeries().sort(moneySeriesComparator);
-
-        MoneySeries actualSeries1 = targetAndActual.getActualSeries().get(1);
-        Assertions.assertEquals("Budget 2", actualSeries1.getName());
-        Assertions.assertEquals(5, actualSeries1.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), actualSeries1.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), actualSeries1.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), actualSeries1.getValues().get(4));
-
-        MoneySeries actualSeries2 = targetAndActual.getActualSeries().get(0);
-        Assertions.assertEquals("Budget 1", actualSeries2.getName());
-        Assertions.assertEquals(5, actualSeries1.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), actualSeries2.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), actualSeries2.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries2.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), actualSeries2.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), actualSeries2.getValues().get(4));
+        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 1, 1, 910, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(20)));
+        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 1, 2, 920, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(20)));
+        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 1, 4, 930, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(20)));
+        beans.add(new WeeklyAggregatedRecordWithTaxBean(2015, 2, 5, 940, MoneyUtil.createMoneyFromCents(10000), BigDecimal.valueOf(20)));
+        return beans;
     }
 
-    @Test
-    void testGetMonthStatsForBudget() throws Exception {
-        when(dateProvider.currentDate()).thenReturn(format.parse("29.01.2015"));
-        when(workRecordRepository.aggregateByMonthAndPersonForBudget(anyLong(), any(Date.class))).thenReturn(createLast5MonthsForBudget());
-        when(planRecordRepository.aggregateByMonthForBudget(anyLong(), any(Date.class))).thenReturn(createLast5Months());
-        TargetAndActual targetAndActual = service.getMonthStatsForBudget(1L, 5);
-
-        List<Money> targetSeries = targetAndActual.getTargetSeries().getValues();
-        Assertions.assertEquals(5, targetSeries.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), targetSeries.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), targetSeries.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), targetSeries.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), targetSeries.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), targetSeries.get(4));
-
-        Assertions.assertEquals(2, targetAndActual.getActualSeries().size());
-        targetAndActual.getActualSeries().sort(moneySeriesComparator);
-
-        MoneySeries actualSeries1 = targetAndActual.getActualSeries().get(1);
-        Assertions.assertEquals("Budget 2", actualSeries1.getName());
-        Assertions.assertEquals(5, actualSeries1.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), actualSeries1.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), actualSeries1.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries1.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), actualSeries1.getValues().get(4));
-
-        MoneySeries actualSeries2 = targetAndActual.getActualSeries().get(0);
-        Assertions.assertEquals("Budget 1", actualSeries2.getName());
-        Assertions.assertEquals(5, actualSeries1.getValues().size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000L), actualSeries2.getValues().get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000L), actualSeries2.getValues().get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0L), actualSeries2.getValues().get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000L), actualSeries2.getValues().get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(500000L), actualSeries2.getValues().get(4));
+    private List<MonthlyAggregatedRecordBean> createLast5Months() {
+        List<MonthlyAggregatedRecordBean> beans = new ArrayList<>();
+        beans.add(new MonthlyAggregatedRecordBean(2014, 8, 15d, 100000));
+        beans.add(new MonthlyAggregatedRecordBean(2014, 9, 15d, 200000));
+        beans.add(new MonthlyAggregatedRecordBean(2014, 11, 15d, 400000));
+        beans.add(new MonthlyAggregatedRecordBean(2015, 0, 15d, 500000));
+        return beans;
     }
 
-    @Test
-    void testFillMissingMonths() throws ParseException {
-        SimpleDateFormat format1 = new SimpleDateFormat("dd.MM.yyyy");
-        List<MonthlyAggregatedRecordBean> beans = new LinkedList<MonthlyAggregatedRecordBean>();
-        beans.add(new MonthlyAggregatedRecordBean(2015, 1, 15d, 100000));
-        beans.add(new MonthlyAggregatedRecordBean(2015, 2, 15d, 200000));
-        beans.add(new MonthlyAggregatedRecordBean(2015, 4, 15d, 400000));
-        beans.add(new MonthlyAggregatedRecordBean(2015, 5, 15d, 500000));
+    private List<DailyAverageRateBean> createLast5Days() {
+        List<DailyAverageRateBean> beans = new ArrayList<>();
+        beans.add(new DailyAverageRateBean(2015, 0, 1, 100d));
+        beans.add(new DailyAverageRateBean(2015, 0, 2, 200d));
+        beans.add(new DailyAverageRateBean(2015, 0, 4, 400d));
+        beans.add(new DailyAverageRateBean(2015, 0, 5, 500d));
+        return beans;
+    }
 
-        LinkedList<Money> testList = new LinkedList<Money>();
-        DateUtil dateUtil = Mockito.mock(DateUtil.class);
-        when(dateProvider.currentDate()).thenReturn(format.parse("01.05.2015"));
-        service.fillMissingMonths(5, beans, testList);
+    private Date getMonthsAgoDate(Date currentDate, int numberOfMonths) {
+        Calendar c = Calendar.getInstance();
+        c.setTime(currentDate);
+        c.add(Calendar.MONTH, -numberOfMonths + 1); // +1, because we want to have the current month included
+        return c.getTime();
+    }
 
-        Assertions.assertEquals(5, testList.size());
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0), testList.get(0));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(100000), testList.get(1));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(200000), testList.get(2));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(0), testList.get(3));
-        Assertions.assertEquals(MoneyUtil.createMoneyFromCents(400000), testList.get(4));
+    private Date getWeeksAgoDate(Date currentDate, int numberOfWeeks) {
+        Calendar c = Calendar.getInstance();
+        c.setTime(currentDate);
+        c.add(Calendar.WEEK_OF_YEAR, -numberOfWeeks + 1); // +1, because we want to have the current week included
+        return c.getTime();
+    }
+
+    private Date getDaysAgoDate(Date currentDate, int numberOfDays) {
+        Calendar c = Calendar.getInstance();
+        c.setTime(currentDate);
+        c.add(Calendar.DAY_OF_YEAR, -numberOfDays + 1); // +1, because we want to have the current day included
+        return c.getTime();
+    }
+
+
+    private List<ShareBean> createShares() {
+        List<ShareBean> shares = new ArrayList<>();
+        shares.add(new ShareBean("share1", 10000L));
+        shares.add(new ShareBean("share2", 20000L));
+        shares.add(new ShareBean("share3", 30000L));
+        shares.add(new ShareBean("share4", 40000L));
+        return shares;
     }
 }

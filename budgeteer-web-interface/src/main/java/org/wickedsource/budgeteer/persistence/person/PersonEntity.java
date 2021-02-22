@@ -1,6 +1,7 @@
 package org.wickedsource.budgeteer.persistence.person;
 
 import lombok.Data;
+import lombok.experimental.Accessors;
 import org.joda.money.Money;
 import org.wickedsource.budgeteer.persistence.project.ProjectEntity;
 import org.wickedsource.budgeteer.persistence.record.PlanRecordEntity;
@@ -12,6 +13,7 @@ import java.util.List;
 
 @Entity
 @Data
+@Accessors(chain = true)
 @Table(name = "PERSON", indexes = {@Index(name = "PERSON_PROJECT_ID_IDX", columnList = "PROJECT_ID")})
 public class PersonEntity {
 

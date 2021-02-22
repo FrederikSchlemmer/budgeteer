@@ -37,7 +37,9 @@ public class RecordService {
      */
     public List<AggregatedRecord> getWeeklyAggregationForPerson(long personId) {
         List<WeeklyAggregatedRecordBean> planRecords = planRecordRepository.aggregateByWeekAndPerson(personId);
+        System.out.println(planRecords);
         List<WeeklyAggregatedRecordBean> workRecords = workRecordRepository.aggregateByWeekAndPerson(personId);
+        System.out.println(workRecords);
         return recordJoiner.joinWeekly(workRecords, planRecords);
     }
 

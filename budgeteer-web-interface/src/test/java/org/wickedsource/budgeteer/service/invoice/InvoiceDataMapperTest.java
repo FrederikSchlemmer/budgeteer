@@ -1,6 +1,7 @@
 package org.wickedsource.budgeteer.service.invoice;
 
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.wickedsource.budgeteer.MoneyUtil;
 import org.wickedsource.budgeteer.persistence.contract.ContractEntity;
@@ -8,15 +9,12 @@ import org.wickedsource.budgeteer.persistence.contract.ContractInvoiceField;
 import org.wickedsource.budgeteer.persistence.invoice.InvoiceEntity;
 import org.wickedsource.budgeteer.persistence.invoice.InvoiceFieldEntity;
 import org.wickedsource.budgeteer.persistence.project.ProjectEntity;
+import org.wickedsource.budgeteer.service.contract.DynamicAttributeField;
+import org.wickedsource.budgeteer.web.components.fileUpload.FileUploadModel;
 
 import java.math.BigDecimal;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import java.time.Instant;
+import java.util.*;
 
 class InvoiceDataMapperTest {
 
@@ -24,7 +22,7 @@ class InvoiceDataMapperTest {
      * Tests whether different invoiced associated with different contracts will get the same dynamic attributes
      */
     @Test
-    void testMapWithDifferentProjectsButSameAttributes(){
+    void testMapWithDifferentProjectsButSameAttributes() {
         InvoiceDataMapper mapper = new InvoiceDataMapper();
 
         List<InvoiceEntity> invoiceList = new LinkedList<InvoiceEntity>();
@@ -32,54 +30,95 @@ class InvoiceDataMapperTest {
         invoiceList.add(getDummyInvoiceEntity2());
 
         List<InvoiceBaseData> mappedData = mapper.map(invoiceList, true);
-        InvoiceBaseData firstInvoice  = mappedData.get(0);
-        assertEquals(3, firstInvoice.getDynamicInvoiceFields().size());
-        assertEquals("contractInvoiceField1 Name", firstInvoice.getDynamicInvoiceFields().get(0).getName());
-        assertEquals("contractInvoiceField1 Value", firstInvoice.getDynamicInvoiceFields().get(0).getValue());
-        assertEquals("contractInvoiceField2 Name", firstInvoice.getDynamicInvoiceFields().get(1).getName());
-        assertEquals("contractInvoiceField2 Value", firstInvoice.getDynamicInvoiceFields().get(1).getValue());
-        assertEquals("contractInvoiceField3 Name", firstInvoice.getDynamicInvoiceFields().get(2).getName());
-        assertEquals("", firstInvoice.getDynamicInvoiceFields().get(2).getValue());
 
-        InvoiceBaseData secondInvoice  = mappedData.get(1);
-        assertEquals(3, secondInvoice.getDynamicInvoiceFields().size());
-        assertEquals("contractInvoiceField1 Name", secondInvoice.getDynamicInvoiceFields().get(0).getName());
-        assertEquals("", secondInvoice.getDynamicInvoiceFields().get(0).getValue());
-        assertEquals("contractInvoiceField2 Name", secondInvoice.getDynamicInvoiceFields().get(1).getName());
-        assertEquals("", secondInvoice.getDynamicInvoiceFields().get(1).getValue());
-        assertEquals("contractInvoiceField3 Name", secondInvoice.getDynamicInvoiceFields().get(2).getName());
-        assertEquals("contractInvoiceField3 Value", secondInvoice.getDynamicInvoiceFields().get(2).getValue());
+        Assertions.assertThat(mappedData)
+                .hasSize(2)
+                .containsExactly(new InvoiceBaseData()
+                                .setInvoiceId(1)
+                                .setContractId(1)
+                                .setContractName("Contract 1")
+                                .setInvoiceName("InvoiceEntity 1")
+                                .setSum(MoneyUtil.createMoney(200))
+                                .setSum_gross(MoneyUtil.createMoney(220))
+                                .setTaxAmount(MoneyUtil.createMoney(20))
+                                .setTaxRate(BigDecimal.valueOf(10))
+                                .setInternalNumber("InvoiceEntity 1")
+                                .setYear(2015)
+                                .setMonth(3)
+                                .setPaidDate(Date.from(Instant.EPOCH))
+                                .setDueDate(null)
+                                .setFileUploadModel(new FileUploadModel()
+                                        .setFileName("FileName1")
+                                        .setFile(null)
+                                        .setChanged(false)
+                                        .setLink("http://Link1"))
+                                .setDynamicInvoiceFields(Arrays.asList(
+                                        new DynamicAttributeField("contractInvoiceField1 Name", "contractInvoiceField1 Value"),
+                                        new DynamicAttributeField("contractInvoiceField2 Name", "contractInvoiceField2 Value"),
+                                        new DynamicAttributeField("contractInvoiceField3 Name", "")
+                                )),
+                        new InvoiceBaseData()
+                                .setInvoiceId(2)
+                                .setContractId(2)
+                                .setContractName("Contract 2")
+                                .setInvoiceName("InvoiceEntity 2")
+                                .setSum(MoneyUtil.createMoney(200))
+                                .setSum_gross(MoneyUtil.createMoney(240))
+                                .setTaxAmount(MoneyUtil.createMoney(40))
+                                .setTaxRate(BigDecimal.valueOf(20))
+                                .setInternalNumber("InvoiceEntity 2")
+                                .setYear(2015)
+                                .setMonth(3)
+                                .setPaidDate(Date.from(Instant.EPOCH))
+                                .setDueDate(null)
+                                .setFileUploadModel(new FileUploadModel()
+                                        .setFileName(null)
+                                        .setFile(null)
+                                        .setChanged(false)
+                                        .setLink(null))
+                                .setDynamicInvoiceFields(Arrays.asList(
+                                        new DynamicAttributeField("contractInvoiceField1 Name", ""),
+                                        new DynamicAttributeField("contractInvoiceField2 Name", ""),
+                                        new DynamicAttributeField("contractInvoiceField3 Name", "contractInvoiceField3 Value")
+                                ))
+                );
     }
 
 
     @Test
-    void testMap(){
+    void testMap() {
         InvoiceDataMapper mapper = new InvoiceDataMapper();
+
         InvoiceBaseData mappedElement = mapper.map(getDummyInvoiceEntity());
 
-        assertEquals(1, mappedElement.getInvoiceId());
-        assertEquals("InvoiceEntity 1", mappedElement.getInvoiceName());
-        assertEquals(MoneyUtil.createMoneyFromCents(20000), mappedElement.getSum());
-        assertEquals("InvoiceEntity 1", mappedElement.getInternalNumber());
-        assertEquals(2015, mappedElement.getYear());
-        assertEquals(3, mappedElement.getMonth());
-        assertTrue(mappedElement.isPaid());
-        assertEquals("Contract 1", mappedElement.getContractName());
-        assertEquals(1, mappedElement.getContractId());
-
-        assertEquals(2, mappedElement.getDynamicInvoiceFields().size());
-        assertEquals("contractInvoiceField1 Name", mappedElement.getDynamicInvoiceFields().get(0).getName());
-        assertEquals("contractInvoiceField1 Value", mappedElement.getDynamicInvoiceFields().get(0).getValue());
-        assertEquals("contractInvoiceField2 Name", mappedElement.getDynamicInvoiceFields().get(1).getName());
-        assertEquals("contractInvoiceField2 Value", mappedElement.getDynamicInvoiceFields().get(1).getValue());
-
-        assertEquals(MoneyUtil.createMoneyFromCents(20000), mappedElement.getSum());
-        assertEquals(MoneyUtil.createMoneyFromCents(22000), mappedElement.getSum_gross());
-        assertEquals(MoneyUtil.createMoneyFromCents(2000), mappedElement.getTaxAmount());
+        Assertions.assertThat(mappedElement)
+                .isEqualTo(new InvoiceBaseData()
+                        .setInvoiceId(1)
+                        .setInvoiceName("InvoiceEntity 1")
+                        .setSum(MoneyUtil.createMoneyFromCents(20000))
+                        .setSum_gross(MoneyUtil.createMoneyFromCents(22000))
+                        .setTaxAmount(MoneyUtil.createMoneyFromCents(2000))
+                        .setTaxRate(BigDecimal.valueOf(10))
+                        .setInternalNumber("InvoiceEntity 1")
+                        .setYear(2015)
+                        .setMonth(3)
+                        .setPaidDate(Date.from(Instant.EPOCH))
+                        .setContractName("Contract 1")
+                        .setContractId(1)
+                        .setFileUploadModel(new FileUploadModel()
+                                .setFileName("FileName1")
+                                .setFile(null)
+                                .setChanged(false)
+                                .setLink("http://Link1"))
+                        .setDynamicInvoiceFields(Arrays.asList(
+                                new DynamicAttributeField("contractInvoiceField1 Name", "contractInvoiceField1 Value"),
+                                new DynamicAttributeField("contractInvoiceField2 Name", "contractInvoiceField2 Value")
+                        ))
+                );
     }
 
 
-    private InvoiceEntity getDummyInvoiceEntity(){
+    private InvoiceEntity getDummyInvoiceEntity() {
         ProjectEntity project1 = new ProjectEntity();
         project1.setId(1);
         project1.setName("Project1");
@@ -119,7 +158,7 @@ class InvoiceDataMapperTest {
         invoiceEntity.setInternalNumber("InvoiceEntity 1");
         invoiceEntity.setYear(2015);
         invoiceEntity.setMonth(3);
-        invoiceEntity.setPaidDate(new Date());
+        invoiceEntity.setPaidDate(Date.from(Instant.EPOCH));
 
         invoiceEntity.setFileName("FileName1");
         invoiceEntity.setFile(null);
@@ -145,7 +184,7 @@ class InvoiceDataMapperTest {
         return invoiceEntity;
     }
 
-    private InvoiceEntity getDummyInvoiceEntity2(){
+    private InvoiceEntity getDummyInvoiceEntity2() {
         ProjectEntity project1 = new ProjectEntity();
         project1.setId(1);
         project1.setName("Project1");
@@ -170,7 +209,7 @@ class InvoiceDataMapperTest {
         invoiceEntity.setInternalNumber("InvoiceEntity 2");
         invoiceEntity.setYear(2015);
         invoiceEntity.setMonth(3);
-        invoiceEntity.setPaidDate(new Date());
+        invoiceEntity.setPaidDate(Date.from(Instant.EPOCH));
         invoiceEntity.setContract(contract2);
         invoiceEntity.setDynamicFields(new LinkedList<InvoiceFieldEntity>());
 

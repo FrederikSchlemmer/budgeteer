@@ -3,6 +3,7 @@ package org.wickedsource.budgeteer.persistence.budget;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.Accessors;
 import org.apache.commons.lang3.builder.CompareToBuilder;
 import org.joda.money.Money;
 import org.wickedsource.budgeteer.MoneyUtil;
@@ -26,6 +27,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
+@Accessors(chain = true)
 public class BudgetEntity implements Comparable<BudgetEntity> {
 
     @Id

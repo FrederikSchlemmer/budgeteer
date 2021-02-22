@@ -1,213 +1,177 @@
 package org.wickedsource.budgeteer.service.invoice;
 
-import com.github.springtestdbunit.DbUnitTestExecutionListener;
-import com.github.springtestdbunit.annotation.DatabaseOperation;
-import com.github.springtestdbunit.annotation.DatabaseSetup;
-import com.github.springtestdbunit.annotation.DatabaseTearDown;
-import org.junit.jupiter.api.Assertions;
+import lombok.SneakyThrows;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.TestExecutionListeners;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.test.context.support.DependencyInjectionTestExecutionListener;
-import org.springframework.test.context.support.DirtiesContextTestExecutionListener;
-import org.springframework.test.context.transaction.TransactionalTestExecutionListener;
-import org.wickedsource.budgeteer.IntegrationTestConfiguration;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.wickedsource.budgeteer.MoneyUtil;
-import org.wickedsource.budgeteer.ServiceIntegrationTestTemplate;
 import org.wickedsource.budgeteer.persistence.contract.ContractEntity;
 import org.wickedsource.budgeteer.persistence.contract.ContractInvoiceField;
 import org.wickedsource.budgeteer.persistence.contract.ContractRepository;
+import org.wickedsource.budgeteer.persistence.invoice.InvoiceEntity;
+import org.wickedsource.budgeteer.persistence.invoice.InvoiceFieldEntity;
 import org.wickedsource.budgeteer.persistence.invoice.InvoiceRepository;
+import org.wickedsource.budgeteer.persistence.project.ProjectEntity;
 import org.wickedsource.budgeteer.service.contract.DynamicAttributeField;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
+import java.util.*;
+
+import static org.mockito.Mockito.*;
 
 
-@ExtendWith(SpringExtension.class)
-@ContextConfiguration(classes = {IntegrationTestConfiguration.class})
-@TestExecutionListeners({DbUnitTestExecutionListener.class, DirtiesContextTestExecutionListener.class, DependencyInjectionTestExecutionListener.class,
-        TransactionalTestExecutionListener.class})
-class InvoiceServiceTest extends ServiceIntegrationTestTemplate {
+@ExtendWith(MockitoExtension.class)
+class InvoiceServiceTest {
 
-    @Autowired
-    private InvoiceService service;
-
-    @Autowired
+    @InjectMocks
+    private InvoiceService invoiceService;
+    @Mock
     private InvoiceRepository invoiceRepository;
-
-    @Autowired
+    @Mock
     private ContractRepository contractRepository;
+
+    private static final SimpleDateFormat formatter = new SimpleDateFormat("dd.MM.yyyy");
 
     /**
      * Save a new Invoice associated with a Contract that does not have any ContractInvoiceFields
      */
+    @SneakyThrows
     @Test
-    @DatabaseSetup("invoiceTest.xml")
-    @DatabaseTearDown(value = "invoiceTest.xml", type = DatabaseOperation.DELETE_ALL)
     void testSaveNewInvoice() {
+        ContractEntity contractEntity = new ContractEntity()
+                .setId(1L)
+                .setName("Test")
+                .setProject(new ProjectEntity()
+                        .setId(1L)
+                        .setName("project1")
+                        .setAuthorizedUsers(Collections.emptyList())
+                        .setProjectEnd(null)
+                        .setProjectStart(null))
+                .setContractFields(Collections.emptyList())
+                .setBudget(MoneyUtil.createMoney(1))
+                .setTaxRate(BigDecimal.valueOf(10))
+                .setInternalNumber("Test")
+                .setStartDate(formatter.parse("01.01.2015"))
+                .setType(ContractEntity.ContractType.FIXED_PRICE)
+                .setBudgets(Collections.emptyList())
+                .setInvoices(Collections.emptyList())
+                .setInvoiceFields(Collections.emptySet());
+        when(contractRepository.findById(1L)).thenReturn(Optional.of(contractEntity));
+
+        InvoiceEntity invoiceEntity = new InvoiceEntity()
+                .setId(0L)
+                .setName("Invoice Name")
+                .setInvoiceSum(MoneyUtil.createMoney(2000))
+                .setInternalNumber("Internal Number")
+                .setYear(2015)
+                .setMonth(2)
+                .setDate(formatter.parse("01.02.2015"))
+                .setContract(contractEntity)
+                .setDynamicFields(Arrays.asList(
+                        new InvoiceFieldEntity()
+                                .setId(0L)
+                                .setValue("test0")
+                                .setField(new ContractInvoiceField(0L, "test0", contractEntity)),
+                        new InvoiceFieldEntity()
+                                .setId(0L)
+                                .setValue("test1")
+                                .setField(new ContractInvoiceField(0L, "test1", contractEntity)),
+                        new InvoiceFieldEntity()
+                                .setId(0L)
+                                .setValue("test2")
+                                .setField(new ContractInvoiceField(0L, "test2", contractEntity)),
+                        new InvoiceFieldEntity()
+                                .setId(0L)
+                                .setValue("test3")
+                                .setField(new ContractInvoiceField(0L, "test3", contractEntity)),
+                        new InvoiceFieldEntity()
+                                .setId(0L)
+                                .setValue("test4")
+                                .setField(new ContractInvoiceField(0L, "test4", contractEntity))
+                ));
+
         InvoiceBaseData testObject = getDummyInvoice();
         testObject.setContractId(1);
 
-        long newContractId = service.save(testObject);
+        long newContractId = invoiceService.save(testObject);
 
-        Assertions.assertTrue(newContractId != 0L);
-
-        InvoiceBaseData savedInvoice = service.getInvoiceById(newContractId);
-
-        Assertions.assertFalse(savedInvoice.isPaid());
-        Assertions.assertEquals(1, savedInvoice.getContractId());
-        Assertions.assertEquals("Test", savedInvoice.getContractName());
-        Assertions.assertEquals("Internal Number", savedInvoice.getInternalNumber());
-        Assertions.assertEquals("Invoice Name", savedInvoice.getInvoiceName());
-        Assertions.assertEquals(2, savedInvoice.getMonth());
-        Assertions.assertEquals(2015, savedInvoice.getYear());
-        Assertions.assertEquals(MoneyUtil.createMoney(2000), savedInvoice.getSum());
-        Assertions.assertTrue(savedInvoice.getInvoiceId() > 0);
-        Assertions.assertEquals(5, savedInvoice.getDynamicInvoiceFields().size());
-        Assertions.assertEquals(5, contractRepository.findByIdAndFetchInvoiceFields(savedInvoice.getContractId()).getInvoiceFields().size());
+        Assertions.assertThat(newContractId)
+                .isZero();
+        verify(invoiceRepository, times(1)).save(invoiceEntity);
     }
 
     /**
      * Save a new Invoice associated with a Contract that has two ContractInvoiceFields
      */
+    @SneakyThrows
     @Test
-    @DatabaseSetup("invoiceTest.xml")
-    @DatabaseTearDown(value = "invoiceTest.xml", type = DatabaseOperation.DELETE_ALL)
     void testSaveNewInvoice2() {
+        ContractEntity contractEntity = new ContractEntity()
+                .setId(2L)
+                .setName("Test")
+                .setProject(new ProjectEntity()
+                        .setId(1L)
+                        .setName("project1")
+                        .setAuthorizedUsers(Collections.emptyList())
+                        .setProjectEnd(null)
+                        .setProjectStart(null))
+                .setContractFields(Collections.emptyList())
+                .setBudget(MoneyUtil.createMoney(1))
+                .setTaxRate(BigDecimal.valueOf(10))
+                .setInternalNumber("Test")
+                .setStartDate(formatter.parse("01.01.2015"))
+                .setType(ContractEntity.ContractType.FIXED_PRICE)
+                .setBudgets(Collections.emptyList())
+                .setInvoices(Collections.emptyList());
+        contractEntity.setInvoiceFields(new HashSet<>(Arrays.asList(
+                        new ContractInvoiceField(400L, "Test Contract Field 2", contractEntity),
+                new ContractInvoiceField(300L, "Test Contract Field", contractEntity))));
+        when(contractRepository.findById(2L)).thenReturn(Optional.of(contractEntity));
+
+        InvoiceEntity invoiceEntity = new InvoiceEntity()
+                .setId(0L)
+                .setName("Invoice Name")
+                .setInvoiceSum(MoneyUtil.createMoney(2000))
+                .setInternalNumber("Internal Number")
+                .setYear(2015)
+                .setMonth(2)
+                .setDate(formatter.parse("01.02.2015"))
+                .setContract(contractEntity)
+                .setDynamicFields(Arrays.asList(
+                        new InvoiceFieldEntity()
+                                .setId(0L)
+                                .setValue("test0")
+                                .setField(new ContractInvoiceField(0L, "test0", contractEntity)),
+                        new InvoiceFieldEntity()
+                                .setId(0L)
+                                .setValue("test1")
+                                .setField(new ContractInvoiceField(0L, "test1", contractEntity)),
+                        new InvoiceFieldEntity()
+                                .setId(0L)
+                                .setValue("test2")
+                                .setField(new ContractInvoiceField(0L, "test2", contractEntity)),
+                        new InvoiceFieldEntity()
+                                .setId(0L)
+                                .setValue("test3")
+                                .setField(new ContractInvoiceField(0L, "test3", contractEntity)),
+                        new InvoiceFieldEntity()
+                                .setId(0L)
+                                .setValue("test4")
+                                .setField(new ContractInvoiceField(0L, "test4", contractEntity))
+                ));
+
         InvoiceBaseData testObject = getDummyInvoice();
         testObject.setContractId(2);
 
-        long newContractId = service.save(testObject);
+        long newContractId = invoiceService.save(testObject);
 
-        Assertions.assertTrue(newContractId != 0L);
-
-        InvoiceBaseData savedInvoice = service.getInvoiceById(newContractId);
-
-        Assertions.assertFalse(savedInvoice.isPaid());
-        Assertions.assertEquals(2, savedInvoice.getContractId());
-        Assertions.assertEquals("Test", savedInvoice.getContractName());
-        Assertions.assertEquals("Internal Number", savedInvoice.getInternalNumber());
-        Assertions.assertEquals("Invoice Name", savedInvoice.getInvoiceName());
-        Assertions.assertEquals(2, savedInvoice.getMonth());
-        Assertions.assertEquals(2015, savedInvoice.getYear());
-        Assertions.assertEquals(MoneyUtil.createMoney(2000), savedInvoice.getSum());
-        Assertions.assertTrue(savedInvoice.getInvoiceId() > 0);
-        Assertions.assertEquals(7, savedInvoice.getDynamicInvoiceFields().size());
-
-        ContractEntity contract = contractRepository.findByIdAndFetchInvoiceFields(savedInvoice.getContractId());
-        Set<ContractInvoiceField> contractInvoiceFields = contract.getInvoiceFields();
-        Assertions.assertEquals(7, contractInvoiceFields.size());
-        Assertions.assertTrue(contractInvoiceFields.contains(new ContractInvoiceField(300, "Test Contract Field", contract)));
-        Assertions.assertTrue(contractInvoiceFields.contains(new ContractInvoiceField(400, "Test Contract Field 2", contract)));
-    }
-
-    /**
-     * Update a Invoice
-     */
-    @Test
-    @DatabaseSetup("invoiceTest.xml")
-    @DatabaseTearDown(value = "invoiceTest.xml", type = DatabaseOperation.DELETE_ALL)
-    void testUpdateInvoice() {
-        InvoiceBaseData testObject = getDummyInvoice();
-        testObject.setContractId(4);
-        testObject.setInvoiceId(4);
-
-        long newContractId = service.save(testObject);
-
-        Assertions.assertTrue(newContractId != 0L);
-
-        InvoiceBaseData savedInvoice = service.getInvoiceById(newContractId);
-
-        Assertions.assertFalse(savedInvoice.isPaid());
-        Assertions.assertEquals(4, savedInvoice.getContractId());
-        Assertions.assertEquals("Test", savedInvoice.getContractName());
-        Assertions.assertEquals("Internal Number", savedInvoice.getInternalNumber());
-        Assertions.assertEquals("Invoice Name", savedInvoice.getInvoiceName());
-        Assertions.assertEquals(2, savedInvoice.getMonth());
-        Assertions.assertEquals(2015, savedInvoice.getYear());
-        Assertions.assertEquals(MoneyUtil.createMoney(2000), savedInvoice.getSum());
-        Assertions.assertTrue(savedInvoice.getInvoiceId() > 0);
-        Assertions.assertEquals(5, savedInvoice.getDynamicInvoiceFields().size());
-
-        ContractEntity contract = contractRepository.findByIdAndFetchInvoiceFields(savedInvoice.getContractId());
-        Set<ContractInvoiceField> contractInvoiceFields = contract.getInvoiceFields();
-        Assertions.assertEquals(5, contractInvoiceFields.size());
-    }
-
-    /**
-     * Update a Invoice
-     */
-    @Test
-    @DatabaseSetup("invoiceTest.xml")
-    @DatabaseTearDown(value = "invoiceTest.xml", type = DatabaseOperation.DELETE_ALL)
-    void testUpdateInvoice2() {
-        InvoiceBaseData testObject = getDummyInvoice();
-        testObject.setContractId(3);
-        testObject.setInvoiceId(3);
-
-        long newContractId = service.save(testObject);
-
-        Assertions.assertTrue(newContractId != 0L);
-
-        InvoiceBaseData savedInvoice = service.getInvoiceById(newContractId);
-
-        Assertions.assertFalse(savedInvoice.isPaid());
-        Assertions.assertEquals(3, savedInvoice.getContractId());
-        Assertions.assertEquals("Test", savedInvoice.getContractName());
-        Assertions.assertEquals("Internal Number", savedInvoice.getInternalNumber());
-        Assertions.assertEquals("Invoice Name", savedInvoice.getInvoiceName());
-        Assertions.assertEquals(2, savedInvoice.getMonth());
-        Assertions.assertEquals(2015, savedInvoice.getYear());
-        Assertions.assertEquals(MoneyUtil.createMoney(2000), savedInvoice.getSum());
-        Assertions.assertTrue(savedInvoice.getInvoiceId() > 0);
-        Assertions.assertEquals(7, savedInvoice.getDynamicInvoiceFields().size());
-        Assertions.assertTrue(savedInvoice.getDynamicInvoiceFields().contains(new DynamicAttributeField("Test Contract Field", "Test")));
-        Assertions.assertTrue(savedInvoice.getDynamicInvoiceFields().contains(new DynamicAttributeField("Test Contract Field 2", "Test 2")));
-
-        ContractEntity contract = contractRepository.findByIdAndFetchInvoiceFields(savedInvoice.getContractId());
-        Set<ContractInvoiceField> contractInvoiceFields = contract.getInvoiceFields();
-        Assertions.assertEquals(7, contractInvoiceFields.size());
-    }
-
-    /**
-     * Update a Invoice
-     */
-    @Test
-    @DatabaseSetup("invoiceTest.xml")
-    @DatabaseTearDown(value = "invoiceTest.xml", type = DatabaseOperation.DELETE_ALL)
-    void testUpdateInvoice3() {
-        InvoiceBaseData testObject = getDummyInvoice();
-        testObject.setContractId(5);
-        testObject.setInvoiceId(5);
-        for (DynamicAttributeField field : testObject.getDynamicInvoiceFields()) {
-            field.setValue("");
-        }
-
-        long newContractId = service.save(testObject);
-
-        Assertions.assertTrue(newContractId != 0L);
-
-        InvoiceBaseData savedInvoice = service.getInvoiceById(newContractId);
-
-        Assertions.assertFalse(savedInvoice.isPaid());
-        Assertions.assertEquals(5, savedInvoice.getContractId());
-        Assertions.assertEquals("Test", savedInvoice.getContractName());
-        Assertions.assertEquals("Internal Number", savedInvoice.getInternalNumber());
-        Assertions.assertEquals("Invoice Name", savedInvoice.getInvoiceName());
-        Assertions.assertEquals(2, savedInvoice.getMonth());
-        Assertions.assertEquals(2015, savedInvoice.getYear());
-        Assertions.assertEquals(MoneyUtil.createMoney(2000), savedInvoice.getSum());
-        Assertions.assertTrue(savedInvoice.getInvoiceId() > 0);
-        Assertions.assertEquals(2, savedInvoice.getDynamicInvoiceFields().size());
-
-        ContractEntity contract = contractRepository.findByIdAndFetchInvoiceFields(savedInvoice.getContractId());
-        Set<ContractInvoiceField> contractInvoiceFields = contract.getInvoiceFields();
-        Assertions.assertEquals(2, contractInvoiceFields.size());
+        Assertions.assertThat(newContractId)
+                .isZero();
+        verify(invoiceRepository, times(1)).save(invoiceEntity);
     }
 
     private InvoiceBaseData getDummyInvoice() {
@@ -236,49 +200,4 @@ class InvoiceServiceTest extends ServiceIntegrationTestTemplate {
         }
         return result;
     }
-
-    @Test
-    @DatabaseSetup("invoiceTest.xml")
-    @DatabaseTearDown(value = "invoiceTest.xml", type = DatabaseOperation.DELETE_ALL)
-    // Invoice with two InvoiceFields
-    void testFindInvoiceFieldByName() {
-        Assertions.assertNotNull(contractRepository.findInvoiceFieldByName(3, "Test Contract Field"));
-        Assertions.assertNotNull(contractRepository.findInvoiceFieldByName(3, "Test Contract Field 2"));
-    }
-
-    @Test
-    @DatabaseSetup("invoiceTest.xml")
-    @DatabaseTearDown(value = "invoiceTest.xml", type = DatabaseOperation.DELETE_ALL)
-    // Invoice with two InvoiceFields
-    void testDeleteInvoice() {
-        service.deleteInvoice(3);
-
-        Assertions.assertNotNull(contractRepository.findByIdAndFetchInvoiceFields(3).getInvoiceFields());
-        Assertions.assertEquals(2, contractRepository.findByIdAndFetchInvoiceFields(3).getInvoiceFields().size());
-        Assertions.assertNotNull(contractRepository.findInvoiceFieldByName(3, "Test Contract Field"));
-        Assertions.assertNotNull(contractRepository.findInvoiceFieldByName(3, "Test Contract Field 2"));
-
-        Assertions.assertNull(invoiceRepository.findInvoiceFieldById(1));
-        Assertions.assertNull(invoiceRepository.findInvoiceFieldById(2));
-    }
-
-    @Test
-    @DatabaseSetup("invoiceTest.xml")
-    @DatabaseTearDown(value = "invoiceTest.xml", type = DatabaseOperation.DELETE_ALL)
-    // Invoice without any InvoiceFields
-    void testDeleteInvoiceWithoutFields() {
-        service.deleteInvoice(4);
-        Assertions.assertFalse(invoiceRepository.findById(4L).isPresent());
-    }
-
-    @Test
-    @DatabaseSetup("invoiceTest.xml")
-    @DatabaseTearDown(value = "invoiceTest.xml", type = DatabaseOperation.DELETE_ALL)
-    // Invoice without any InvoiceFields but with a contract containing ContractInvoiceFields
-    void testDeleteInvoiceWithContractInvoiceFields() {
-        service.deleteInvoice(5);
-        Assertions.assertNotNull(contractRepository.findInvoiceFieldByName(5, "Test Contract Field"));
-        Assertions.assertNotNull(contractRepository.findInvoiceFieldByName(5, "Test Contract Field 2"));
-    }
-
 }
