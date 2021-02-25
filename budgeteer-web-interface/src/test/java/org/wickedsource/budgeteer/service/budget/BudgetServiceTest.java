@@ -21,6 +21,7 @@ import org.wickedsource.budgeteer.persistence.record.WorkRecordRepository;
 import org.wickedsource.budgeteer.service.contract.ContractBaseData;
 import org.wickedsource.budgeteer.service.contract.ContractDataMapper;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 import static org.mockito.BDDMockito.given;
@@ -71,13 +72,27 @@ class BudgetServiceTest {
 
     @Test
     void testLoadBudgetTags() {
-        when(budgetRepository.getAllTagsInProject(1L)).thenReturn(Arrays.asList("1", "2"));
+        when(budgetRepository.findByProjectId(1L)).thenReturn(Collections.singletonList(
+                createBudgetEntityWithCompleteBudgetTagEntity()));
 
         List<String> loadedTags = budgetService.loadBudgetTags(1L);
 
         Assertions.assertThat(loadedTags)
-                .containsAll(Arrays.asList("1", "2"))
-                .hasSize(2);
+                .containsAll(Arrays.asList("Tag1", "Tag2", "Tag3"))
+                .hasSize(3);
+    }
+
+    @Test
+    void testLoadDistinctBudgetTags() {
+        when(budgetRepository.findByProjectId(1L)).thenReturn(Arrays.asList(
+                createBudgetEntityWithCompleteBudgetTagEntity(),
+                createBudgetEntityWithCompleteBudgetTagEntity()));
+
+        List<String> loadedTags = budgetService.loadBudgetTags(1L);
+
+        Assertions.assertThat(loadedTags)
+                .containsAll(Arrays.asList("Tag1", "Tag2", "Tag3"))
+                .hasSize(3);
     }
 
     @Test
@@ -100,13 +115,14 @@ class BudgetServiceTest {
 
     @Test
     void testLoadBudgetsDetailData() {
-        when(budgetRepository.findByAtLeastOneTag(1L, Arrays.asList("1", "2", "3"))).thenReturn(Collections.singletonList(createBudgetEntity()));
+        when(budgetRepository.findByProjectId(1L)).thenReturn(Collections.singletonList(createBudgetEntity()));
+        when(budgetRepository.findById(1L)).thenReturn(createBudgetEntityOptional());
         when(workRecordRepository.getLatestWorkRecordDate(1L)).thenReturn(new Date());
         when(workRecordRepository.getSpentBudget(1L)).thenReturn(100000.0);
         when(planRecordRepository.getPlannedBudget(1L)).thenReturn(200000.0);
         when(workRecordRepository.getAverageDailyRate(1L)).thenReturn(50000.0);
 
-        List<BudgetDetailData> data = budgetService.loadBudgetsDetailData(1L, new BudgetTagFilter(Arrays.asList("1", "2", "3"), 1L));
+        List<BudgetDetailData> data = budgetService.loadBudgetsDetailData(1L, new BudgetTagFilter(Arrays.asList("Tag1", "Tag2", "Tag3"), 1L));
 
         Assertions.assertThat(data).hasSize(1);
         Assertions.assertThat(data.get(0).getSpent().getAmountMinor().doubleValue())
@@ -212,14 +228,31 @@ class BudgetServiceTest {
         budget.setId(1L);
         budget.setTotal(MoneyUtil.createMoneyFromCents(100000));
         budget.setName("Budget 123");
-        budget.getTags().add(new BudgetTagEntity("Tag1"));
-        budget.getTags().add(new BudgetTagEntity("Tag2"));
-        budget.getTags().add(new BudgetTagEntity("Tag3"));
         ProjectEntity project = new ProjectEntity();
         project.setId(1);
         budget.setProject(project);
         budget.setImportKey("budget123");
+
+        budget.getTags().add(new BudgetTagEntity("Tag1"));
+        budget.getTags().add(new BudgetTagEntity("Tag2"));
+        budget.getTags().add(new BudgetTagEntity("Tag3"));
         return budget;
+    }
+
+    private BudgetEntity createBudgetEntityWithCompleteBudgetTagEntity() {
+        BudgetEntity budgetEntity = createBudgetEntity();
+        budgetEntity.getTags().clear();
+        budgetEntity.getTags().addAll(Arrays.asList(
+                createBudgetTagEntity("Tag1", budgetEntity),
+                createBudgetTagEntity("Tag2", budgetEntity),
+                createBudgetTagEntity("Tag3", budgetEntity)));
+        return budgetEntity;
+    }
+
+    private BudgetTagEntity createBudgetTagEntity(String tag, BudgetEntity budgetEntity) {
+        BudgetTagEntity budgetTagEntity = new BudgetTagEntity(tag);
+        budgetTagEntity.setBudget(budgetEntity);
+        return budgetTagEntity;
     }
 
     private Optional<BudgetEntity> createBudgetEntityOptional() {
@@ -264,6 +297,7 @@ class BudgetServiceTest {
         entity.setId(1);
         entity.setName("TestName");
         entity.setBudgets(new LinkedList<>());
+        entity.setTaxRate(BigDecimal.TEN);
         return entity;
     }
 

@@ -19,7 +19,6 @@ import org.wickedsource.budgeteer.persistence.record.WorkRecordRepository;
 import org.wickedsource.budgeteer.persistence.user.UserEntity;
 import org.wickedsource.budgeteer.persistence.user.UserRepository;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;

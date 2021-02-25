@@ -28,6 +28,9 @@ public class ContractDataMapper extends AbstractMapper<ContractEntity, ContractB
     @Autowired
     private ContractRepository contractRepository;
 
+    @Autowired
+    private ContractService contractService;
+
     @Override
     public ContractBaseData map(ContractEntity entity) {
         if(entity == null)
@@ -37,7 +40,7 @@ public class ContractDataMapper extends AbstractMapper<ContractEntity, ContractB
         result.setContractId(entity.getId());
         result.setBudget(entity.getBudget());
         result.setBudgetLeft(toMoneyNullsafe(contractRepository.getBudgetLeftByContractId(entity.getId())));
-        result.setBudgetSpent(toMoneyNullsafe(contractRepository.getSpentBudgetByContractId(entity.getId())));
+        result.setBudgetSpent(toMoneyNullsafe(contractService.getSpentBudgetByContractId(entity.getId())));
         result.setInternalNumber(entity.getInternalNumber());
         result.setProjectId(entity.getProject().getId());
         result.setType(entity.getType());

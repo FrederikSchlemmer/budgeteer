@@ -9,6 +9,7 @@ import org.wickedsource.budgeteer.persistence.contract.ContractRepository;
 import org.wickedsource.budgeteer.persistence.invoice.InvoiceEntity;
 import org.wickedsource.budgeteer.persistence.invoice.InvoiceFieldEntity;
 import org.wickedsource.budgeteer.persistence.invoice.InvoiceRepository;
+import org.wickedsource.budgeteer.service.contract.ContractService;
 import org.wickedsource.budgeteer.service.contract.DynamicAttributeField;
 import org.wickedsource.budgeteer.web.pages.invoice.overview.table.InvoiceOverviewTableModel;
 
@@ -30,6 +31,9 @@ public class InvoiceService {
 
     @Autowired
     private ContractRepository contractRepository;
+
+    @Autowired
+    private ContractService contractService;
 
     @PreAuthorize("canReadProject(#projectId)")
     public InvoiceOverviewTableModel getInvoiceOverviewByProject(long projectId){
@@ -104,7 +108,7 @@ public class InvoiceService {
                 // Create a new Attribute
                 if (!attributeFound) {
                     // see if the Project already contains a field with this name. If not, create a new one
-                    ContractInvoiceField contractInvoiceField = contractRepository.findInvoiceFieldByName(invoiceBaseData.getContractId(), fields.getName().trim());
+                    ContractInvoiceField contractInvoiceField = contractService.findInvoiceFieldInContractByName(invoiceBaseData.getContractId(), fields.getName().trim());
                     if (contractInvoiceField == null) {
                         contractInvoiceField = new ContractInvoiceField(0, fields.getName().trim(), contract);
                     }

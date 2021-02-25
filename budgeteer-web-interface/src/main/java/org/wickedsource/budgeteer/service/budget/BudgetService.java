@@ -6,9 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.wickedsource.budgeteer.MoneyUtil;
-import org.wickedsource.budgeteer.persistence.budget.BudgetEntity;
-import org.wickedsource.budgeteer.persistence.budget.BudgetRepository;
-import org.wickedsource.budgeteer.persistence.budget.BudgetTagEntity;
+import org.wickedsource.budgeteer.persistence.budget.*;
 import org.wickedsource.budgeteer.persistence.contract.ContractEntity;
 import org.wickedsource.budgeteer.persistence.contract.ContractRepository;
 import org.wickedsource.budgeteer.persistence.person.DailyRateRepository;
@@ -18,6 +16,7 @@ import org.wickedsource.budgeteer.persistence.record.PlanRecordRepository;
 import org.wickedsource.budgeteer.persistence.record.WorkRecordRepository;
 import org.wickedsource.budgeteer.service.UnknownEntityException;
 import org.wickedsource.budgeteer.service.contract.ContractDataMapper;
+import org.wickedsource.budgeteer.service.notification.MissingContractForBudgetNotification;
 import org.wickedsource.budgeteer.web.BudgeteerSession;
 import org.wickedsource.budgeteer.web.components.listMultipleChoiceWithGroups.OptionGroup;
 import org.wickedsource.budgeteer.web.pages.budgets.exception.InvalidBudgetImportKeyAndNameException;
@@ -28,6 +27,9 @@ import javax.transaction.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 
 @Service
@@ -87,7 +89,7 @@ public class BudgetService {
         if (filter.getSelectedTags().isEmpty()) {
             budgets = budgetRepository.findByProjectIdOrderByNameAsc(projectId);
         } else {
-            budgets = new ArrayList<>(new TreeSet<>(budgetRepository.findByAtLeastOneTag(projectId, filter.getSelectedTags())));
+            budgets = new ArrayList<>(new TreeSet<>(findBudgetWithAtLeastOneTag(projectId, filter.getSelectedTags())));
         }
         return budgets;
     }
@@ -100,7 +102,7 @@ public class BudgetService {
      */
     @PreAuthorize("canReadPerson(#personId)")
     public List<BudgetBaseData> loadBudgetBaseDataByPersonId(long personId) {
-        List<BudgetEntity> budget = budgetRepository.findByPersonId(personId);
+        List<BudgetEntity> budget = findAllBudgetsByPersonId(personId);
         return budgetBaseDataMapper.map(budget);
     }
 
@@ -112,13 +114,166 @@ public class BudgetService {
      */
     @PreAuthorize("canReadProject(#projectId)")
     public List<String> loadBudgetTags(long projectId) {
-        return budgetRepository.getAllTagsInProject(projectId);
+        List<BudgetEntity> budgetEntities = budgetRepository.findByProjectId(projectId);
+        return budgetEntities.stream()
+                .map(BudgetEntity::getTags)
+                .flatMap(List::stream)
+                .filter(budgetTagEntity -> budgetTagEntity.getBudget().getProject().getId() == projectId)
+                .map(BudgetTagEntity::getTag)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Searches for Budgets that are tagged with AT LEAST ONE of the given tags.
+     *
+     * @param tags the tags to search for
+     * @return all Budgets that match the search criteria
+     */
+    private List<BudgetEntity> findBudgetWithAtLeastOneTag(long projectId, List<String> tags) {
+        List<BudgetEntity> budgetEntities = budgetRepository.findByProjectId(projectId);
+        return budgetEntities.stream()
+                .flatMap(budgetEntity -> Stream.of(budgetEntity.getTags())
+                        .flatMap(List::stream)
+                        .filter(budgetTagEntity -> tags.contains(budgetTagEntity.getTag()))
+                        .map(budgetTagEntity -> budgetEntity))
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Searches for Budgets with a missing total and map it to MissingBudgetTotalBean.
+     *
+     * @param projectId ID of the project
+     * @return MissingBudgetTotalBean with information of the budgets with missing totals
+     */
+    @PreAuthorize("canReadProject(#projectId)")
+    public List<MissingBudgetTotalBean> findBudgetByProjectIdWithMissingTotal(long projectId) {
+        List<BudgetEntity> budgetEntities = budgetRepository.findByProjectIdOrderByNameAsc(projectId);
+        return budgetEntities.stream()
+                .filter(budgetEntity -> budgetEntity.getTotal().isZero())
+                .map(budgetEntity -> new MissingBudgetTotalBean(budgetEntity.getId(), budgetEntity.getName()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Searches for Budgets with a missing contract and matching project id.
+     *
+     * @param projectId ID of the project
+     * @return List<MissingContractForBudgetNotification> with information of the budgets with missing contracts
+     */
+    @PreAuthorize("canReadProject(#projectId)")
+    public List<MissingContractForBudgetNotification> findBudgetsWithMissingContractAndProjectId(long projectId) {
+        List<BudgetEntity> budgetEntities = budgetRepository.findByProjectId(projectId);
+        return budgetEntities.stream()
+                .filter(budgetEntity -> Objects.isNull(budgetEntity.getContract()))
+                .map(budgetEntity -> new MissingContractForBudgetNotification(budgetEntity.getId()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns the TaxCoefficient defined by the contract of the budget. If the budget has no contract or
+     * the contract no taxrate assigned, this method returns 1.0
+     *
+     * @param budgetId The primary key of the budget record at hand.
+     * @return 1.0+taxRate/100
+     */
+    @PreAuthorize("canReadBudget(#budgetId)")
+    public Double findTaxCoefficientByBudget(long budgetId) {
+        Optional<BudgetEntity> budgetEntityOptional = budgetRepository.findById(budgetId);
+        if (!budgetEntityOptional.isPresent()) {
+            return null;
+        }
+        BudgetEntity budgetEntity = budgetEntityOptional.get();
+        if (Objects.isNull(budgetEntity.getContract())){
+            return 1.0;
+        }
+        return budgetEntity.getContract().getTaxRate().divide(BigDecimal.valueOf(100), RoundingMode.CEILING)
+                .add(BigDecimal.ONE).doubleValue();
+    }
+
+    /**
+     * Returns a MissingBudgetTotalBean object for the given Budget if it's budget total is zero.
+     * Returns null, if the budget is not zero or if there is no budget present with the id!
+     *
+     * @param budgetId ID of the budget
+     * @return MissingBudgetTotalBean with information of the budgets with missing totals
+     */
+    @PreAuthorize("canReadBudget(#budgetId)")
+    public MissingBudgetTotalBean findBudgetByBudgetIdWithMissingTotal(long budgetId) {
+        Optional<BudgetEntity> budgetEntityOptional = budgetRepository.findById(budgetId);
+        if (!budgetEntityOptional.isPresent()) {
+            return null;
+        }
+
+        BudgetEntity budgetEntity = budgetEntityOptional.get();
+        if (!budgetEntity.getTotal().isZero()) {
+            return null;
+        }
+        return new MissingBudgetTotalBean(budgetEntity.getId(), budgetEntity.getName());
+    }
+
+    /**
+     * Returns a MissingBudgetTotalBean object for the given Budget if it's budget total is zero.
+     * Returns null, if the budget is not zero or if there is no budget present with the id!
+     *
+     * @param budgetId ID of the budget
+     * @return MissingBudgetTotalBean with information of the budgets with missing totals
+     */
+    @PreAuthorize("canReadBudget(#budgetId)")
+    public MissingContractForBudgetNotification findMissingContractForBudget(long budgetId) {
+        Optional<BudgetEntity> budgetEntityOptional = budgetRepository.findById(budgetId);
+        if (!budgetEntityOptional.isPresent()) {
+            return null;
+        }
+
+        BudgetEntity budgetEntity = budgetEntityOptional.get();
+        if (Objects.nonNull(budgetEntity.getContract())) {
+            return null;
+        }
+        return new MissingContractForBudgetNotification(budgetEntity.getId());
+    }
+
+    /**
+     * Searches for Budgets with the matching project id and maps them to LimitReachedBean.
+     *
+     * @param projectId ID of the project
+     * @return List of LimitReachedBean
+     */
+    @PreAuthorize("canReadProject(#projectId)")
+    public List<LimitReachedBean> findBudgetsForProjectId(long projectId) {
+        List<BudgetEntity> budgetEntities = budgetRepository.findByProjectIdOrderByNameAsc(projectId);
+        return budgetEntities.stream()
+                .map(budgetEntity -> new LimitReachedBean(budgetEntity.getId(), budgetEntity.getName()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Searches for Budget with the matching id and reached limit and maps it to LimitReachedBean.
+     * Returns null if budget isn't present or limit isn't reached!
+     *
+     * @param budgetId ID of the budget to load.
+     * @return null or LimitReachedBean
+     */
+    @PreAuthorize("canReadBudget(#budgetId)")
+    public LimitReachedBean findBudgetWithReachedLimit(long budgetId, Money spent) {
+        Optional<BudgetEntity> budgetEntityOptional = budgetRepository.findById(budgetId);
+
+        if (!budgetEntityOptional.isPresent()) {
+            return null;
+        }
+
+        BudgetEntity budgetEntity = budgetEntityOptional.get();
+        if (budgetEntity.getLimit().isGreaterThan(spent) && budgetEntity.getLimit().isZero()) {
+            return null;
+        }
+        return new LimitReachedBean(budgetEntity.getId(), budgetEntity.getName());
     }
 
     /**
      * Loads the detail data of a single budget.
      *
-     * @param budgetId ID ID of the budget to load.
+     * @param budgetId ID of the budget to load.
      * @return detail data for the requested budget.
      */
     @PreAuthorize("canReadBudget(#budgetId)")
@@ -132,7 +287,7 @@ public class BudgetService {
         Double spentBudgetInCents = workRecordRepository.getSpentBudget(entity.getId());
         Double plannedBudgetInCents = planRecordRepository.getPlannedBudget(entity.getId());
         Double avgDailyRateInCents = workRecordRepository.getAverageDailyRate(entity.getId());
-        Double taxCoefficient = budgetRepository.getTaxCoefficientByBudget(entity.getId());
+        Double taxCoefficient = findTaxCoefficientByBudget(entity.getId());
 
         BudgetDetailData data = new BudgetDetailData();
         data.setId(entity.getId());
@@ -246,6 +401,16 @@ public class BudgetService {
         return data;
     }
 
+    @PreAuthorize("canReadPerson(#personId)")
+    public List<BudgetEntity> findAllBudgetsByPersonId(long personId) {
+        Iterable<BudgetEntity> budgetEntities = budgetRepository.findAll();
+        return StreamSupport.stream(budgetEntities.spliterator(), false)
+                .flatMap(budgetEntity -> budgetEntity.getWorkRecords().stream()
+                        .filter(workRecordEntity -> workRecordEntity.getPerson().getId() == personId)
+                        .map(workRecordEntity -> budgetEntity))
+                .collect(Collectors.toList());
+    }
+
     /**
      * Stores the data to the given budget.
      *
@@ -347,7 +512,7 @@ public class BudgetService {
 
     @PreAuthorize("canReadPerson(#personId)")
     private List<BudgetBaseData> loadBudgetBaseDataForPerson(long personId) {
-        List<BudgetEntity> budgets = new ArrayList<>(new TreeSet<>(budgetRepository.findByPersonId(personId)));
+        List<BudgetEntity> budgets = new ArrayList<>(new TreeSet<>(findAllBudgetsByPersonId(personId)));
         return budgetBaseDataMapper.map(budgets);
     }
 

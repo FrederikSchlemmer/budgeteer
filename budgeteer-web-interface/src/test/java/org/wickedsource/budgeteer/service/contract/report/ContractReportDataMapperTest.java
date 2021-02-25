@@ -9,9 +9,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.wickedsource.budgeteer.MoneyUtil;
 import org.wickedsource.budgeteer.persistence.contract.ContractEntity;
-import org.wickedsource.budgeteer.persistence.contract.ContractRepository;
 import org.wickedsource.budgeteer.persistence.contract.ContractStatisticBean;
 import org.wickedsource.budgeteer.persistence.project.ProjectEntity;
+import org.wickedsource.budgeteer.service.contract.ContractService;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -26,7 +26,7 @@ class ContractReportDataMapperTest {
     @InjectMocks
     private ContractReportDataMapper contractReportDataMapper;
     @Mock
-    private ContractRepository contractRepository;
+    private ContractService contractService;
 
     @Test
     void whenTaxrateIsNull() {
@@ -47,7 +47,7 @@ class ContractReportDataMapperTest {
         ContractStatisticBean contractStatisticBean = new ContractStatisticBean(2021,
                 0.0, 100, 0, 0, 0);
 
-        when(contractRepository.getContractStatisticAggregatedByMonthAndYear(eq(3L), any(), any()))
+        when(contractService.getContractStatisticAggregatedByMonthAndYear(anyLong(), anyInt(), anyInt()))
                 .thenReturn(contractStatisticBean);
 
         ContractReportData contractBaseData = contractReportDataMapper.map(contractEntity, new Date());
@@ -76,7 +76,7 @@ class ContractReportDataMapperTest {
         ContractStatisticBean contractStatisticBean = new ContractStatisticBean(2021,
                 0.0, 1, 0, 0, 0);
 
-        when(contractRepository.getContractStatisticAggregatedByMonthAndYear(eq(4L), any(), any()))
+        when(contractService.getContractStatisticAggregatedByMonthAndYear(anyLong(), anyInt(), anyInt()))
                 .thenReturn(contractStatisticBean);
 
         ContractReportData contractBaseData = contractReportDataMapper.map(contractEntity, new Date());

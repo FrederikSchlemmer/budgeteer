@@ -25,6 +25,8 @@ class ContractDataMapperTest {
     private ContractDataMapper contractDataMapper;
     @Mock
     private ContractRepository contractRepository;
+    @Mock
+    private ContractService contractService;
 
     @Test
     void whenTaxrateIsNotNull() {
@@ -48,7 +50,7 @@ class ContractDataMapperTest {
                 .setInvoiceFields(Collections.emptySet());
 
         when(contractRepository.getBudgetLeftByContractId(4L)).thenReturn(0.01);
-        when(contractRepository.getSpentBudgetByContractId(4L)).thenReturn(0.00);
+        when(contractService.getSpentBudgetByContractId(4L)).thenReturn(0.00);
 
         ContractBaseData contractBaseData = contractDataMapper.map(contractEntity);
 

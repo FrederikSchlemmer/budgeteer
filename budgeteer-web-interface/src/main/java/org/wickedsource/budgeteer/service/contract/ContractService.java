@@ -1,22 +1,24 @@
 package org.wickedsource.budgeteer.service.contract;
 
 import org.apache.commons.lang3.StringUtils;
+import org.joda.money.Money;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.wickedsource.budgeteer.persistence.budget.BudgetEntity;
 import org.wickedsource.budgeteer.persistence.budget.BudgetRepository;
-import org.wickedsource.budgeteer.persistence.contract.ContractEntity;
-import org.wickedsource.budgeteer.persistence.contract.ContractFieldEntity;
-import org.wickedsource.budgeteer.persistence.contract.ContractRepository;
+import org.wickedsource.budgeteer.persistence.contract.*;
+import org.wickedsource.budgeteer.persistence.invoice.InvoiceEntity;
 import org.wickedsource.budgeteer.persistence.invoice.InvoiceRepository;
 import org.wickedsource.budgeteer.persistence.project.ProjectContractField;
 import org.wickedsource.budgeteer.persistence.project.ProjectEntity;
 import org.wickedsource.budgeteer.persistence.project.ProjectRepository;
+import org.wickedsource.budgeteer.persistence.record.WorkRecordEntity;
 import org.wickedsource.budgeteer.web.pages.contract.overview.table.ContractOverviewTableModel;
 
 import javax.transaction.Transactional;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -88,7 +90,7 @@ public class ContractService {
         contractEntity.setLink(contractBaseData.getFileModel().getLink());
         contractEntity.setFileName(contractBaseData.getFileModel().getFileName());
         contractEntity.setFile(contractBaseData.getFileModel().getFile());
-        if(contractBaseData.getTaxRate().compareTo(BigDecimal.ZERO) < 0) {
+        if (contractBaseData.getTaxRate().compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("Taxrate must be positive.");
         } else {
             contractEntity.setTaxRate(contractBaseData.getTaxRate());
@@ -178,5 +180,164 @@ public class ContractService {
                 .ofNullable(projectRepository.findContractFieldByName(contractBaseData.getProjectId(), dynamicAttribute.getName().trim()))
                 .orElse(new ProjectContractField(0, dynamicAttribute.getName().trim(), project));
         return new ContractFieldEntity(projectContractField, StringUtils.trimToEmpty(dynamicAttribute.getValue()));
+    }
+
+    /**
+     * Searches for a invoice field in the contract and returns an ContractInvoiceField.
+     * Returns the ContractInvoiceField if the contract is present and the field could be found.
+     * Else the method returns null!
+     *
+     * @param contractID Id of the contract to search.
+     * @param fieldName  Name of the invoice field.
+     * @return ContractInvoiceField or null
+     */
+    @PreAuthorize("canReadContract(#contractId)")
+    public ContractInvoiceField findInvoiceFieldInContractByName(long contractID, String fieldName) {
+        Optional<ContractEntity> contractEntityOptional = contractRepository.findById(contractID);
+        if (!contractEntityOptional.isPresent()) {
+            return null;
+        }
+
+        ContractEntity contractEntity = contractEntityOptional.get();
+        Optional<ContractInvoiceField> contractInvoiceFieldOptional = contractEntity.getInvoiceFields().stream()
+                .filter(contractInvoiceField -> contractInvoiceField.getFieldName().equals(fieldName))
+                .findFirst();
+
+        return contractInvoiceFieldOptional.orElse(null);
+    }
+
+
+    /**
+     * Searches for a contract and calculates the budget spent by worked minutes and the dailyRate.
+     * Returns the BudgetSpent as double if the contract is present and the budget spent could be calculated.
+     * Note: The budgetSpent needs to be multiplied by 100, because the previous SQL syntax didn't parsed the money value (2 EUR = 200).
+     *
+     * @param contractID Id of the contract to search.
+     * @return BudgetSpent or 0
+     */
+    public Double getSpentBudgetByContractId(long contractID) {
+        Optional<ContractEntity> contractEntityOptional = contractRepository.findById(contractID);
+
+        if (!contractEntityOptional.isPresent()) {
+            return 0.0;
+        }
+
+        ContractEntity contractEntity = contractEntityOptional.get();
+        Optional<Money> budgetSpentOptional = contractEntity.getBudgets().stream()
+                .filter(budgetEntity -> budgetEntity.getContract().getId() == contractID)
+                .map(BudgetEntity::getWorkRecords)
+                .flatMap(List::stream)
+                .map(workRecordEntity ->
+                        workRecordEntity.getDailyRate().multipliedBy(workRecordEntity.getMinutes())
+                                .dividedBy(60, RoundingMode.CEILING)
+                                .dividedBy(8, RoundingMode.CEILING)
+                                .multipliedBy(100)
+                )
+                .reduce(Money::plus);
+
+        return budgetSpentOptional.map(money -> money.getAmount().doubleValue())
+                .orElse(0.0);
+    }
+
+    /**
+     * returns a ContractStatisticBean for a given contract till the given month and year.
+     * returns the remaining budget of the contract, the spend budget in budgeteer and the invoiced budget until the given date
+     *
+     * @param contractId
+     * @param month
+     * @param year
+     * @return
+     */
+    public ContractStatisticBean getContractStatisticAggregatedByMonthAndYear(long contractId, int month, int year) {
+        Optional<ContractEntity> contractEntityOptional = contractRepository.findById(contractId);
+        if (!contractEntityOptional.isPresent()) {
+            return null;
+        }
+        ContractEntity contractEntity = contractEntityOptional.get();
+
+        Optional<Money> progressMoneyOptional = calculateProgressMoney(contractEntity, contractId, year, month);
+        Optional<Money> invoicedBudgetMoneyOptional = calculateInvoiceBudget(contractEntity, contractId, year, month);
+
+        return new ContractStatisticBean(year,
+                progressMoneyOptional.map(money -> money.dividedBy(contractEntity.getBudget().getAmount(), RoundingMode.CEILING).getAmount().doubleValue())
+                        .orElse(0.0),
+                progressMoneyOptional.map(money -> getScaledMoneyAsLong(contractEntity.getBudget().minus(money)))
+                        .orElse(getScaledMoneyAsLong(contractEntity.getBudget())),
+                progressMoneyOptional.map(this::getScaledMoneyAsLong).orElse(0L),
+                invoicedBudgetMoneyOptional.map(this::getScaledMoneyAsLong).orElse(0L),
+                month);
+    }
+
+    /**
+     * returns a ContractStatisticBean for a given contract till the given month and year.
+     * returns the remaining budget of the contract, the spend budget in budgeteer and the invoiced budget until the given date
+     *
+     * @param contractId
+     * @param month
+     * @param year
+     * @return
+     */
+    public ContractStatisticBean getContractStatisticByMonthAndYear(long contractId, int month, int year) {
+        Optional<ContractEntity> contractEntityOptional = contractRepository.findById(contractId);
+        if (!contractEntityOptional.isPresent()) {
+            return null;
+        }
+        ContractEntity contractEntity = contractEntityOptional.get();
+
+        Optional<Money> progressMoneyOptional = calculateProgressMoney(contractEntity, contractId, year, month);
+
+        Optional<Money> remainingContractBudgetOptional = contractEntity.getBudgets().stream()
+                .filter(budgetEntity -> budgetEntity.getContract().getId() == contractId)
+                .map(BudgetEntity::getWorkRecords)
+                .flatMap(List::stream)
+                .filter(workRecordEntity -> workRecordEntity.getYear() == year && workRecordEntity.getMonth() == month)
+                .map(this::calculateWorkRecordBudget)
+                .reduce(Money::plus);
+
+        Optional<Money> invoicedBudgetMoneyOptional = calculateInvoiceBudget(contractEntity, contractId, year, month);
+
+        return new ContractStatisticBean(year,
+                contractEntity.getBudget().getAmount().doubleValue() < 10e-16 ? null :
+                        progressMoneyOptional.map(money -> money.dividedBy(contractEntity.getBudget().getAmount(), RoundingMode.CEILING).getAmount().doubleValue())
+                                .orElse(0.0),
+                remainingContractBudgetOptional.map(money -> getScaledMoneyAsLong(contractEntity.getBudget().minus(money)))
+                        .orElse(getScaledMoneyAsLong(contractEntity.getBudget())),
+                remainingContractBudgetOptional.map(this::getScaledMoneyAsLong).orElse(0L),
+                invoicedBudgetMoneyOptional.map(this::getScaledMoneyAsLong).orElse(0L),
+                month);
+    }
+
+    private Money getScaledMoney(Money money) {
+        return money.multipliedBy(100);
+    }
+
+    private Long getScaledMoneyAsLong(Money money) {
+        return getScaledMoney(money).getAmount().longValue();
+    }
+
+    private Optional<Money> calculateProgressMoney(ContractEntity contractEntity, long contractId, int year, int month) {
+        return contractEntity.getBudgets().stream()
+                .filter(budgetEntity -> budgetEntity.getContract().getId() == contractId)
+                .map(BudgetEntity::getWorkRecords)
+                .flatMap(List::stream)
+                .filter(workRecordEntity -> workRecordEntity.getYear() < year
+                        || (workRecordEntity.getYear() == year && workRecordEntity.getMonth() <= month))
+                .map(this::calculateWorkRecordBudget)
+                .reduce(Money::plus);
+    }
+
+    private Optional<Money> calculateInvoiceBudget(ContractEntity contractEntity, long contractId, int year, int month) {
+        return contractEntity.getInvoices().stream()
+                .filter(invoiceEntity -> invoiceEntity.getContract().getId() == contractId
+                        && (invoiceEntity.getYear() < year || (invoiceEntity.getYear() == year && invoiceEntity.getMonth() <= month)))
+                .map(InvoiceEntity::getInvoiceSum)
+                .reduce(Money::plus);
+    }
+
+    private Money calculateWorkRecordBudget(WorkRecordEntity workRecordEntity) {
+        return workRecordEntity.getDailyRate()
+                .multipliedBy(workRecordEntity.getMinutes())
+                .dividedBy(60, RoundingMode.CEILING)
+                .dividedBy(8, RoundingMode.CEILING);
     }
 }

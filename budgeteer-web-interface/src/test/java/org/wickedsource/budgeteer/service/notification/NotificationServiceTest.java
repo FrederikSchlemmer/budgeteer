@@ -13,6 +13,7 @@ import org.wickedsource.budgeteer.persistence.record.MissingDailyRateForBudgetBe
 import org.wickedsource.budgeteer.persistence.record.PlanRecordRepository;
 import org.wickedsource.budgeteer.persistence.record.WorkRecordRepository;
 import org.wickedsource.budgeteer.persistence.user.UserRepository;
+import org.wickedsource.budgeteer.service.budget.BudgetService;
 
 import java.util.Collections;
 import java.util.Date;
@@ -33,6 +34,8 @@ class NotificationServiceTest {
     @Mock
     private BudgetRepository budgetRepository;
     @Mock
+    private BudgetService budgetService;
+    @Mock
     private PlanRecordRepository planRecordRepository;
     @Mock
     private UserRepository userRepository;
@@ -51,7 +54,7 @@ class NotificationServiceTest {
     void testGetNotifications() {
         when(workRecordRepository.getMissingDailyRatesForProject(1L)).thenReturn(Collections.singletonList(createMissingDailyRate()));
         when(workRecordRepository.countByProjectId(anyLong())).thenReturn(0L, 0L);
-        when(budgetRepository.getMissingBudgetTotalsForProject(1L)).thenReturn(Collections.singletonList(createMissingBudgetTotal()));
+        when(budgetService.findBudgetByProjectIdWithMissingTotal(1L)).thenReturn(Collections.singletonList(createMissingBudgetTotal()));
         when(planRecordRepository.countByProjectId(1L)).thenReturn(0L);
         when(missingDailyRateMapper.map(anyList())).thenCallRealMethod();
         when(missingBudgetTotalNotificationMapper.map(anyList())).thenCallRealMethod();
@@ -82,7 +85,7 @@ class NotificationServiceTest {
 
     @Test
     void testGetNotificationsForBudget() {
-        when(budgetRepository.getMissingBudgetTotalForBudget(1L)).thenReturn(createMissingBudgetTotal());
+        when(budgetService.findBudgetByBudgetIdWithMissingTotal(1L)).thenReturn(createMissingBudgetTotal());
         when(missingBudgetTotalNotificationMapper.map(any(MissingBudgetTotalBean.class))).thenCallRealMethod();
 
         List<Notification> notifications = service.getNotificationsForBudget(1L);

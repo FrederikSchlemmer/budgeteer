@@ -15,6 +15,7 @@ import org.wickedsource.budgeteer.persistence.invoice.InvoiceEntity;
 import org.wickedsource.budgeteer.persistence.invoice.InvoiceFieldEntity;
 import org.wickedsource.budgeteer.persistence.invoice.InvoiceRepository;
 import org.wickedsource.budgeteer.persistence.project.ProjectEntity;
+import org.wickedsource.budgeteer.service.contract.ContractService;
 import org.wickedsource.budgeteer.service.contract.DynamicAttributeField;
 
 import java.math.BigDecimal;
@@ -33,6 +34,8 @@ class InvoiceServiceTest {
     private InvoiceRepository invoiceRepository;
     @Mock
     private ContractRepository contractRepository;
+    @Mock
+    private ContractService contractService;
 
     private static final SimpleDateFormat formatter = new SimpleDateFormat("dd.MM.yyyy");
 

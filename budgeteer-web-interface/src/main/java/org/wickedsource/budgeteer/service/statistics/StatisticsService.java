@@ -10,6 +10,7 @@ import org.wickedsource.budgeteer.persistence.invoice.InvoiceRepository;
 import org.wickedsource.budgeteer.persistence.record.*;
 import org.wickedsource.budgeteer.service.DateUtil;
 import org.wickedsource.budgeteer.service.budget.BudgetTagFilter;
+import org.wickedsource.budgeteer.service.contract.ContractService;
 import org.wickedsource.budgeteer.web.pages.contract.details.contractDetailChart.ContractDetailBudgetChart;
 
 import javax.transaction.Transactional;
@@ -35,6 +36,9 @@ public class StatisticsService {
 
     @Autowired
     private ContractRepository contractRepository;
+
+    @Autowired
+    private ContractService contractService;
 
     @Autowired
     private InvoiceRepository invoiceRepository;
@@ -772,7 +776,7 @@ public class StatisticsService {
         Calendar currentDate = Calendar.getInstance();
         currentDate.setTime(new Date());
         while (cal.before(currentDate)) {
-            ContractStatisticBean bean = contractRepository.getContractStatisticAggregatedByMonthAndYear(contractId, cal.get(Calendar.MONTH), cal.get(Calendar.YEAR));
+            ContractStatisticBean bean = contractService.getContractStatisticAggregatedByMonthAndYear(contractId, cal.get(Calendar.MONTH), cal.get(Calendar.YEAR));
             result.add(bean);
             cal.add(Calendar.MONTH, 1);
         }
